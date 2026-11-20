@@ -1,0 +1,158 @@
+import { describe, expect, it } from "vitest";
+import { SEED_BY_ID } from "../catalog";
+import { recommend, tasteProfile } from "../recommend";
+import { EMPTY_LIBRARY, type Library, type Status } from "../types";
+
+const id = (media: string, slug: string) => `seed:${media}:${slug}`;
+
+function lib(entries: [string, Status, number?][], dismissed: string[] = []): Library {
+  return {
+    ...EMPTY_LIBRARY,
+    entries: Object.fromEntries(
+      entries.map(([itemId, status, rating]) => [itemId, { itemId, status, rating, at: 0 }]),
+    ),
+    dismissed,
+  };
+}
+
+describe("recomendação", () => {
+  const fan = lib([
+    [id("anime", "death-note"), "concluido", 5],
+    [id("anime", "monster"), "concluido", 5],
+    [id("anime", "cowboy-bebop"), "concluido", 4.5],
+    [id("filme", "cidade-de-deus"), "concluido", 5],
+  ]);
+
+  it("não sugere o que já está na biblioteca nem o que foi dispensado", () => {
+    const withDismiss = { ...fan, dismissed: [id("jogo", "disco-elysium")] };
+    const ids = recommend(withDismiss, { count: 50, perMedia: 50 }).map((r) => r.item.id);
+    for (const owned of Object.keys(fan.entries)) expect(ids).not.toContain(owned);
+    expect(ids).not.toContain(id("jogo", "disco-elysium"));
+    // sem a dispensa, Disco Elysium aparece: o teste prova que a exclusão é o que o tira
+    const without = recommend(fan, { count: 50, perMedia: 50 }).map((r) => r.item.id);
+    expect(without).toContain(id("jogo", "disco-elysium"));
+  });
+
+  it("limita a 2 sugestões por mídia entre 5 e traz mais de uma mídia", () => {
+    const recs = recommend(fan);
+    expect(recs.length).toBe(5);
+    const per: Record<string, number> = {};
+    for (const r of recs) per[r.item.media] = (per[r.item.media] ?? 0) + 1;
+    expect(Math.max(...Object.values(per))).toBeLessThanOrEqual(2);
+    expect(Object.keys(per).length).toBeGreaterThan(1);
+  });
+
+  it("sempre explica o motivo citando um item que o usuário avaliou e vibes em comum", () => {
+    for (const r of recommend(fan)) {
+      expect(r.anchor).toBeDefined();
+      expect(r.reason).toContain(r.anchor!.item.title);
+      expect(r.shared.length).toBeGreaterThan(0);
+      for (const v of r.shared) {
+        expect(r.item.vibes).toContain(v);
+        expect(r.anchor!.item.vibes).toContain(v);
+      }
+    }
+  });
+
+  it("o motivo usa a nota real do usuário", () => {
+    const only = lib([[id("anime", "death-note"), "concluido", 4.5]]);
+    const r = recommend(only)[0];
+    expect(r.reason).toMatch(/deu 4,5★ a Death Note/);
+  });
+
+  it("'não é pra mim' reordena na hora e tira o item da lista", () => {
+    const before = recommend(fan, { count: 8, perMedia: 8 });
+    const top = before[0].item;
+    const after = recommend({ ...fan, dismissed: [top.id] }, { count: 8, perMedia: 8 });
+    expect(after.map((r) => r.item.id)).not.toContain(top.id);
+    // dispensar reduz em exatamente 1 o peso de cada vibe do item
+    const t0 = tasteProfile(fan);
+    const t1 = tasteProfile({ ...fan, dismissed: [top.id] });
+    for (const v of top.vibes) expect(t1[v]).toBe((t0[v] ?? 0) - 1);
+  });
+
+  it("nota baixa pesa contra: o mesmo item sobe ou cai conforme a nota dada a um parecido", () => {
+    const base: [string, Status, number?][] = [[id("anime", "cowboy-bebop"), "concluido", 5]];
+    const fanOfDS = lib([...base, [id("jogo", "dark-souls"), "concluido", 5]]);
+    const hateDS = lib([...base, [id("jogo", "dark-souls"), "concluido", 1]]);
+    const target = id("jogo", "the-last-of-us");
+    const pick = (l: Library) =>
+      recommend(l, { count: 50, perMedia: 50 }).find((r) => r.item.id === target)?.score ?? 0;
+    expect(tasteProfile(hateDS)["sobrevivência"]).toBeLessThan(0);
+    expect(tasteProfile(fanOfDS)["sobrevivência"]).toBeGreaterThan(0);
+    expect(pick(fanOfDS)).toBeGreaterThan(pick(hateDS));
+  });
+
+  it("filtro de mídia devolve só aquela mídia, sem o limite de 2", () => {
+    const recs = recommend(fan, { media: "jogo", count: 4 });
+    expect(recs.length).toBe(4);
+    expect(recs.every((r) => r.item.media === "jogo")).toBe(true);
+  });
+
+  it("biblioteca vazia não gera sugestões (o onboarding pede favoritos)", () => {
+    expect(recommend(EMPTY_LIBRARY)).toEqual([]);
+  });
+
+  it("é determinístico", () => {
+    expect(recommend(fan).map((r) => r.item.id)).toEqual(recommend(fan).map((r) => r.item.id));
+  });
+
+  it("não sugere de novo um título que veio importado com outro id", () => {
+    const imported = {
+      ...EMPTY_LIBRARY,
+      items: {
+        "anilist:1": { id: "anilist:1", title: "Death Note", media: "anime" as const, vibes: SEED_BY_ID[id("anime", "death-note")].vibes, source: "anilist" as const },
+      },
+      entries: { "anilist:1": { itemId: "anilist:1", status: "concluido" as const, rating: 5, at: 0 } },
+    };
+    const ids = recommend(imported, { count: 50, perMedia: 50 }).map((r) => r.item.id);
+    expect(ids).not.toContain(id("anime", "death-note"));
+  });
+});
+
+import { interactions, qualityPrior } from "../recommend";
+import { publicScore } from "../remote";
+import { EMPTY_LIBRARY as EMPTY2 } from "../types";
+
+describe("v2 no app", () => {
+  const mk = (id: string, media: "anime" | "jogo" | "filme", q?: number) => ({ id, title: id, media, vibes: ["sombrio"], source: "seed" as const, quality: q });
+
+  it("nota pública vira prior padronizado por mídia e só vale com amostra suficiente", () => {
+    const filmes = Array.from({ length: 10 }, (_, i) => mk(`f${i}`, "filme", 5 + i * 0.3));
+    const jogos = [mk("g1", "jogo", 9), mk("g2", "jogo", 3)];
+    const z = qualityPrior([...filmes, ...jogos]);
+    expect(z[9]).toBeGreaterThan(z[0]);
+    expect(z.slice(0, 10).reduce((a, b) => a + b, 0)).toBeCloseTo(0, 6);
+    expect(z[10]).toBe(0); // só 2 jogos com nota: neutro
+    expect(qualityPrior([mk("x", "anime")])).toEqual([0]);
+  });
+
+  it("publicScore ignora nota inválida ou com poucos votos", () => {
+    expect(publicScore(8.26, 100, 50)).toBe(8.3);
+    expect(publicScore(8, 10, 50)).toBeUndefined();
+    expect(publicScore(0, 1000, 50)).toBeUndefined();
+    expect(publicScore(11, 1000, 50)).toBeUndefined();
+    expect(publicScore(undefined, 1000, 50)).toBeUndefined();
+    expect(publicScore(7, undefined, 0)).toBe(7);
+  });
+
+  it("entrada importada, sem data, não some pelo decaimento", () => {
+    const lib = { ...EMPTY2, entries: { "seed:jogo:hades": { itemId: "seed:jogo:hades", status: "concluido" as const, rating: 5, at: 0 } } };
+    const now = Date.UTC(2026, 10, 1);
+    const [h] = interactions(lib, now);
+    expect(now / 86_400_000 - h.day).toBeCloseTo(365, 3);
+  });
+
+  it("a nota pública puxa para cima, a igualdade de gosto, e nunca sobrepõe quem não combina", () => {
+    const base = { ...EMPTY2, entries: { "seed:anime:death-note": { itemId: "seed:anime:death-note", status: "concluido" as const, rating: 5, at: Date.now() } } };
+    const pool = [
+      { id: "a", title: "A", media: "filme" as const, vibes: ["psicológico", "mistério"], source: "tmdb" as const, quality: 6 },
+      { id: "b", title: "B", media: "filme" as const, vibes: ["psicológico", "mistério"], source: "tmdb" as const, quality: 9 },
+      ...Array.from({ length: 8 }, (_, i) => ({ id: `n${i}`, title: `N${i}`, media: "filme" as const, vibes: ["humor leve"], source: "tmdb" as const, quality: 5 + i * 0.4 })),
+    ];
+    const r = recommend(base, { pool, count: 5, perMedia: 5 });
+    const ids = r.map((x) => x.item.id);
+    expect(ids.indexOf("b")).toBeLessThan(ids.indexOf("a"));
+    expect(ids).not.toContain("n7"); // humor leve não combina com o que ele gosta
+  });
+});

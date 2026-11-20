@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-  cacheComponents: true,
-  partialPrefetching: true,
-};
+// O app guarda os dados no navegador e renderiza no cliente; não precisa de Cache Components.
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
