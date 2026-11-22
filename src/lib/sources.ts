@@ -221,6 +221,17 @@ export async function openLibrarySearch(q: string): Promise<Item[]> {
   return (body.docs ?? []).map(mapOpenLibrary).filter((i): i is Item => !!i);
 }
 
+/** O livro mais provável para um título (e autor) vindo de uma importação. */
+export async function openLibraryFind(title: string, author?: string): Promise<Item | null> {
+  const url = new URL(OPENLIB() + "/search.json");
+  url.searchParams.set("title", title);
+  if (author) url.searchParams.set("author", author);
+  url.searchParams.set("limit", "3");
+  url.searchParams.set("fields", OL_FIELDS);
+  const body = await olGet<{ docs?: OpenLibraryDoc[] }>(url);
+  return (body.docs ?? []).map(mapOpenLibrary).find((i): i is Item => !!i) ?? null;
+}
+
 export async function openLibraryDiscover(vibes: string[], page = 1): Promise<Item[]> {
   const subjects = Array.from(new Set(vibes.map((v) => OL_DISCOVER[v as keyof typeof OL_DISCOVER]).filter((s): s is string => !!s))).slice(0, 4);
   if (subjects.length === 0) return [];

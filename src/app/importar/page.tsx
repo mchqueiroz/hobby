@@ -6,12 +6,12 @@ import { useState } from "react";
 import type { Imported } from "@/lib/anilist";
 import { USER_RE } from "@/lib/anilist";
 import { Consent } from "@/components/Consent";
-import { parseLetterboxd, parseMalXml } from "@/lib/importers";
+import { parseBooks, parseLetterboxd, parseMalXml } from "@/lib/importers";
 import { importHistory, loadDemo, track } from "@/lib/store";
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 
-type Source = "anilist" | "mal" | "letterboxd";
+type Source = "anilist" | "mal" | "letterboxd" | "livros";
 
 type State =
   | { s: "idle" }
@@ -57,7 +57,7 @@ export default function Importar() {
   }
 
   /** Importação por arquivo: o arquivo é lido no próprio aparelho; só títulos e notas vão ao servidor para achar gêneros. */
-  async function fromFiles(source: "mal" | "letterboxd", files: FileList | null) {
+  async function fromFiles(source: "mal" | "letterboxd" | "livros", files: FileList | null) {
     if (!files || files.length === 0 || st.s === "loading") return;
     const fail = (reason: string, msg: string) => {
       track("import_fail", { reason, source });
@@ -77,6 +77,18 @@ export default function Importar() {
         payload = { entries };
         unit = "animes";
         note = (b) => (b.unknown > 0 ? `${b.unknown} título${b.unknown === 1 ? "" : "s"} não foi encontrado no AniList e ficou de fora.` : undefined);
+      } else if (source === "livros") {
+        const { books, total } = parseBooks(await files[0].text());
+        if (books.length === 0) return fail("empty", "Não encontramos livros nesse arquivo. Envie o CSV exportado do Goodreads ou do StoryGraph.");
+        url = "/api/import/livros";
+        payload = { books };
+        unit = "livros";
+        note = (b) => {
+          const parts: string[] = [];
+          if (total > books.length) parts.push(`Importamos ${books.length} dos ${total} livros, priorizando os que você avaliou.`);
+          if (b.missing > 0) parts.push(`${b.missing} não ${b.missing === 1 ? "foi encontrado" : "foram encontrados"} no Open Library.`);
+          return parts.join(" ") || undefined;
+        };
       } else {
         const list = await Promise.all(Array.from(files).map(async (f) => ({ name: f.name, text: await f.text() })));
         const { films, total } = parseLetterboxd(list);
@@ -153,6 +165,19 @@ export default function Importar() {
             onChange={(e) => { void fromFiles("letterboxd", e.target.files); e.target.value = ""; }} />
         </label>
         {st.s === "error" && st.from === "letterboxd" && <p id="erro-lb" role="alert" className="err">{st.msg}</p>}
+      </section>
+
+      <section className="card mt12" aria-labelledby="gr-t">
+        <h2 id="gr-t" style={{ fontSize: 16 }}>Goodreads ou StoryGraph</h2>
+        <p className="muted" style={{ fontSize: 13, margin: "2px 0 10px" }}>
+          No Goodreads, abra My Books, Import and export, Export Library. No StoryGraph, Manage Account, Export StoryGraph Library. Escolha o .csv baixado.
+        </p>
+        <label className="btn ghost small" style={{ cursor: "pointer" }}>
+          {st.s === "loading" && st.from === "livros" ? "Importando…" : "Escolher arquivo .csv"}
+          <input type="file" accept=".csv,text/csv" hidden aria-label="Arquivo do Goodreads ou StoryGraph"
+            onChange={(e) => { void fromFiles("livros", e.target.files); e.target.value = ""; }} />
+        </label>
+        {st.s === "error" && st.from === "livros" && <p id="erro-gr" role="alert" className="err">{st.msg}</p>}
       </section>
 
       <Consent />

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { buildFilmImport, MAX_FILMS, parseCsv, parseLetterboxd, parseMalXml } from "../importers";
+import { buildFilmImport, MAX_FILMS, parseBooks, parseCsv, parseLetterboxd, parseMalXml } from "../importers";
 import type { Item } from "../types";
 
 const fx = (n: string) => readFileSync(new URL(`../../../e2e/fixtures/${n}`, import.meta.url), "utf8");
@@ -93,5 +93,50 @@ describe("buildFilmImport", () => {
     expect(r.counts).toEqual({ quero: 0, andamento: 0, concluido: 2, abandonei: 0, pausei: 0 });
     expect(r.missing).toBe(1);
     expect(r.withoutVibes).toBe(1);
+  });
+});
+
+describe("parseBooks", () => {
+  it("lê o export do Goodreads: estante, nota 0 = sem nota, ano original", () => {
+    const csv = [
+      "Book Id,Title,Author,My Rating,Year Published,Original Publication Year,Exclusive Shelf",
+      '1,"Dom Casmurro",Machado de Assis,5,2016,1899,read',
+      "2,Duna,Frank Herbert,0,2017,1965,currently-reading",
+      "3,Torto Arado,Itamar Vieira Junior,0,2019,,to-read",
+      "4,Sem estante,Alguém,4,2000,,shelf-inventada",
+    ].join("\n");
+    const r = parseBooks(csv);
+    expect(r.from).toBe("goodreads");
+    expect(r.books).toEqual([
+      { title: "Dom Casmurro", author: "Machado de Assis", year: 1899, status: "concluido", rating: 5 },
+      { title: "Duna", author: "Frank Herbert", year: 1965, status: "andamento", rating: undefined },
+      { title: "Torto Arado", author: "Itamar Vieira Junior", year: 2019, status: "quero", rating: undefined },
+    ]);
+  });
+
+  it("lê o export do StoryGraph: primeiro autor, nota fracionada vira meia estrela, abandonado", () => {
+    const csv = ["Title,Authors,Read Status,Star Rating", '"O Hobbit","J.R.R. Tolkien, Outro",read,4.25', "Ulisses,James Joyce,did-not-finish,"].join("\n");
+    const r = parseBooks(csv);
+    expect(r.from).toBe("storygraph");
+    expect(r.books.map((b) => [b.title, b.author, b.status, b.rating])).toEqual([
+      ["O Hobbit", "J.R.R. Tolkien", "concluido", 4.5],
+      ["Ulisses", "James Joyce", "abandonei", undefined],
+    ]);
+  });
+
+  it("recusa CSV que não é de nenhum dos dois", () => {
+    expect(parseBooks("Name,Year,Rating\nDuna,2021,4").from).toBeNull();
+  });
+});
+
+describe("buildFilmImport valida o que vem do aparelho", () => {
+  it("descarta status inventado e nota fora de 0,5 a 5", () => {
+    const it1 = { id: "a", title: "A", media: "livro", vibes: ["drama humano"] } as Item;
+    const it2 = { id: "b", title: "B", media: "livro", vibes: ["drama humano"] } as Item;
+    const r = buildFilmImport(
+      [{ title: "A", status: "hackeado" as never, rating: 5 }, { title: "B", status: "concluido", rating: 99 }],
+      [it1, it2],
+    );
+    expect(r.entries).toEqual([{ itemId: "b", status: "concluido", rating: undefined, at: expect.any(Number) }]);
   });
 });
