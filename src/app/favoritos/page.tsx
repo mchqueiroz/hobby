@@ -42,8 +42,9 @@ export default function Favoritos() {
     setBusy(false);
     setMiss(terms.filter((_, i) => !hits[i]));
     setFound((f) => {
-      const ids = new Set(f.map((i) => i.id));
-      return [...f, ...hits.filter((h): h is Item => !!h && !ids.has(h.id) && !ids.add(h.id))].slice(0, MAX - sel.length);
+      const out = [...f];
+      for (const h of hits) if (h && !out.some((i) => i.id === h.id)) out.push(h);
+      return out.slice(0, MAX - sel.length);
     });
     setTyped("");
   }

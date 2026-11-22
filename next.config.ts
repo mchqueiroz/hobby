@@ -21,7 +21,7 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${prod ? "" : " 'unsafe-eval'"}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://image.tmdb.org https://images.igdb.com https://*.anilist.co https://covers.openlibrary.org https://coverartarchive.org https://*.archive.org",
+  "img-src 'self' data: blob: https://image.tmdb.org https://images.igdb.com https://*.anilist.co https://covers.openlibrary.org https://coverartarchive.org https://archive.org https://*.archive.org",
   "font-src 'self' data:",
   `connect-src 'self' ${[...origin(process.env.NEXT_PUBLIC_SUPABASE_URL), ...(prod ? [] : ["ws:", "wss:"])].join(" ")}`.trim(),
   "worker-src 'self'",
