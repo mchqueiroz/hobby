@@ -243,13 +243,15 @@ async function mbGet<T>(path: string, params: Record<string, string>): Promise<T
   const url = new URL(MUSICBRAINZ() + path);
   url.searchParams.set("fmt", "json");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  return json<T>(
-    await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": MB_UA },
-      signal: AbortSignal.timeout(TIMEOUT),
-      cache: "no-store",
-    }),
-  );
+  const get = () =>
+    fetch(url, { headers: { Accept: "application/json", "User-Agent": MB_UA }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" });
+  let res = await get();
+  // 503 = limite de ~1 pedido/s por IP ou servidor ocupado: tenta mais uma vez depois de 1,1 s
+  if (res.status === 503) {
+    await new Promise((r) => setTimeout(r, 1_100));
+    res = await get();
+  }
+  return json<T>(res);
 }
 
 /** Tira os caracteres que a busca do MusicBrainz (Lucene) trata como operador. */
@@ -283,16 +285,25 @@ export async function musicBrainzDiscover(vibes: string[], page = 1): Promise<It
 /* ------------------- junta tolerando falha por fonte ------------------- */
 
 async function settle(
+  name: string,
   on: boolean,
   run: () => Promise<Item[]>,
 ): Promise<{ items: Item[]; state: SourceState }> {
   if (!on) return { items: [], state: "off" };
   try {
     return { items: await run(), state: "ok" };
-  } catch {
+  } catch (e) {
+    // aparece no log da Vercel; sem a consulta, que pode ter o que a pessoa digitou
+    console.warn("[hobby-fonte]", name, e instanceof Error ? e.message : String(e));
     return { items: [], state: "error" };
   }
 }
+
+/** Cache de borda: resposta com fonte em erro fica pouco tempo, para a próxima pessoa não herdar a falha. */
+export const cacheFor = (r: RemoteResult, sMaxAge: number, swr: number) =>
+  Object.values(r.sources).includes("error")
+    ? "public, max-age=0, s-maxage=30"
+    : `public, max-age=0, s-maxage=${sMaxAge}, stale-while-revalidate=${swr}`;
 
 function merge(
   t: { items: Item[]; state: SourceState },
@@ -317,12 +328,12 @@ function merge(
 export async function searchAll(q: string): Promise<RemoteResult> {
   const c = configured();
   const [t, g, a, m, o, u] = await Promise.all([
-    settle(c.tmdb, () => tmdbSearch(q)),
-    settle(c.igdb, () => igdbSearch(q)),
-    settle(true, () => anilistSearch(q, "anime")),
-    settle(true, () => anilistSearch(q, "manga")),
-    settle(true, () => openLibrarySearch(q)),
-    settle(true, () => musicBrainzSearch(q)),
+    settle("tmdb", c.tmdb, () => tmdbSearch(q)),
+    settle("igdb", c.igdb, () => igdbSearch(q)),
+    settle("anilist", true, () => anilistSearch(q, "anime")),
+    settle("anilist-manga", true, () => anilistSearch(q, "manga")),
+    settle("openlibrary", true, () => openLibrarySearch(q)),
+    settle("musicbrainz", true, () => musicBrainzSearch(q)),
   ]);
   return merge(t, g, a, m, o, u);
 }
@@ -330,12 +341,12 @@ export async function searchAll(q: string): Promise<RemoteResult> {
 export async function discoverAll(vibes: string[], page = 1): Promise<RemoteResult> {
   const c = configured();
   const [t, g, a, m, o, u] = await Promise.all([
-    settle(c.tmdb, () => tmdbDiscover(vibes, page)),
-    settle(c.igdb, () => igdbDiscover(vibes, page)),
-    settle(true, () => anilistDiscover(vibes, "anime", page)),
-    settle(true, () => anilistDiscover(vibes, "manga", page)),
-    settle(true, () => openLibraryDiscover(vibes, page)),
-    settle(true, () => musicBrainzDiscover(vibes, page)),
+    settle("tmdb", c.tmdb, () => tmdbDiscover(vibes, page)),
+    settle("igdb", c.igdb, () => igdbDiscover(vibes, page)),
+    settle("anilist", true, () => anilistDiscover(vibes, "anime", page)),
+    settle("anilist-manga", true, () => anilistDiscover(vibes, "manga", page)),
+    settle("openlibrary", true, () => openLibraryDiscover(vibes, page)),
+    settle("musicbrainz", true, () => musicBrainzDiscover(vibes, page)),
   ]);
   return merge(t, g, a, m, o, u);
 }

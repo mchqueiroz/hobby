@@ -1,260 +1,72 @@
 # Hobby
 
-Todos os seus hobbies em um perfil. A próxima descoberta vem de qualquer mídia.
+Um perfil para registrar anime, mangá, jogos, filmes e séries, livros e álbuns, com recomendações que cruzam mídias ("porque você deu 5★ a X (anime), veja Y (jogo)").
 
-MVP de registro e recomendação entre anime, mangá, jogos, filmes e séries, livros e música (álbuns), seguindo o plano do grupo
-(promessa: "traga seu histórico de anime e descubra o que assistir ou jogar a seguir").
+## Rodar
 
-## Como rodar
+Precisa de Node 22 (a mesma versão do CI).
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
-npm test             # 81 testes da lógica (recomendação, importação, busca, armazenamento)
-npm run build        # compila e confere tipos
+cp .env.example .env.local   # opcional, veja "Variáveis" abaixo
+npm run dev                  # http://localhost:3000
 ```
 
-**Ver como celular, no notebook:** `npm run celular` sobe o app e abre uma janela de 390×844 (Chrome/Chromium/Brave/Edge). Sem esses navegadores, abra `http://localhost:3000`, aperte F12 e depois Ctrl+Shift+M (modo celular; no Firefox também é Ctrl+Shift+M). **No celular de verdade (iPhone ou Android)**, na mesma rede Wi-Fi: `npm run iphone` (compila e serve em modo produção, que funciona por IP; o modo `dev` do Next 16 bloqueia acesso por IP de rede) e abra `http://IP-DO-NOTEBOOK:3000` no Safari. No Fedora, libere a porta: `sudo firewall-cmd --add-port=3000/tcp`. Redes de universidade costumam isolar os aparelhos: use o roteador de casa ou o roteamento (hotspot) do iPhone.
+Sem nenhuma chave o app já funciona: AniList (anime, mangá), Open Library (livros) e MusicBrainz (música) não pedem chave, e os dados ficam no aparelho. Para ver rápido sem importar nada, toque em **Ver com dados de exemplo** na tela inicial.
 
-Para ver rápido sem importar nada: abra o app e toque em **Ver com dados de exemplo**.
+### No celular
 
-## Publicar no GitHub
+- **Janela de celular no notebook:** `npm run celular` (abre 390×844 no Chrome/Chromium/Brave/Edge). Também dá pelo F12 e depois Ctrl+Shift+M.
+- **Celular de verdade, na mesma rede Wi-Fi:** `npm run iphone` e abra `http://IP-DO-NOTEBOOK:3000`. O `next dev` bloqueia acesso pelo IP da rede, por isso este comando roda em modo produção. No Fedora, libere a porta com `sudo firewall-cmd --add-port=3000/tcp`.
 
-O repositório já vem com histórico git e uma verificação automática (`.github/workflows/ci.yml`: lint, tipos, testes e build a cada push). Para publicar:
+## Variáveis (`.env.local`)
+
+| Variável | Para quê | Sem ela |
+|---|---|---|
+| `TMDB_READ_TOKEN` | filmes e séries (themoviedb.org/settings/api) | sem busca de filmes e séries; a importação do Letterboxd não funciona |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | jogos (app em dev.twitch.tv/console) | sem busca de jogos |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | conta, sincronização e parte social | o app funciona só no aparelho |
+| `NEXT_PUBLIC_SITE_URL` | links de compartilhamento e sitemap | usa o endereço local |
+| `CONTACT_URL`, `NEXT_PUBLIC_CONTACT_URL`, `NEXT_PUBLIC_FEEDBACK_URL` | contato no User-Agent, na página de privacidade e no botão de feedback | valores padrão; sem o botão de feedback |
+
+Use a chave **publishable** do Supabase, nunca a `service_role`.
+
+### Supabase (opcional)
+
+1. No SQL Editor, rode `supabase/schema.sql`, `supabase/metricas.sql`, `supabase/moderacao.sql` e depois os arquivos de `supabase/migrations/` em ordem numérica (stage6 → stage12).
+2. Em *Authentication > URL Configuration*, ponha o endereço do app em *Site URL* e `http://localhost:3000/**` em *Redirect URLs*.
+3. Para testar: crie uma conta, registre algo, entre na mesma conta em outro aparelho e confira que os registros se juntam.
+
+## Testar
 
 ```bash
-# 1) crie um repositório VAZIO em github.com/new (sem README, sem .gitignore, sem licença). Sugestão: privado por enquanto.
-# 2) na pasta do projeto:
-git remote add origin git@github.com:SEU-USUARIO/hobby.git     # ou a URL https que o GitHub mostrar
-git push -u origin main
-# alternativa com o GitHub CLI já logado:  gh repo create hobby --private --source=. --push
+npm test             # testes de lógica (vitest, src/lib/__tests__)
+npm run typecheck    # tipos
+npm run lint
+npm run build
 ```
 
-Nunca vão para o repositório: `.env.local` (suas chaves), `node_modules` e `.next` (o `.gitignore` já cuida disso; só o `.env.example`, sem valores, vai). Se você pôs uma chave em algum arquivo por engano, troque a chave no painel do serviço. Apagar do git depois não basta. Escolha uma licença (`LICENSE`) só quando decidir como quer compartilhar o código; sem licença, ninguém mais pode reutilizá-lo. Os testes de navegador (`e2e/`) não rodam no CI porque precisam do servidor simulado e do Playwright; rode `bash e2e/run.sh` na sua máquina antes de mudanças grandes.
+O CI (`.github/workflows/ci.yml`) roda lint, tipos, testes e build a cada push.
 
-## O que já funciona
+### E2E (navegador)
 
-- **Importação do AniList** pelo nome de usuário (lista pública, sem login). Traduz gêneros e tags para "vibes".
-- **Biblioteca com filtros na horizontal**: status, categoria (mídia), época (década) e estilo (vibes), cada um numa linha que rola de lado, com a contagem de cada opção. Estilos se combinam (o item precisa ter todos), busca por título ou autor, e os filtros lembram o que você escolheu ao voltar de uma obra.
-- **Resenha junto da nota**: no registro, "+ Escrever resenha" (opcional; o registro rápido segue em 2 toques).
-- **Registro rápido em 2 toques**: escolher o item e tocar na nota (meia estrela incluída). Com "Desfazer".
-- **Biblioteca** com filtro por status e mídia, **perfil** com contagem, vibes e meta do ano.
-- **Recomendação entre mídias com explicação** ("Porque você deu 5★ a X (anime): os dois são sombrios e de jornada"),
-  no máximo 2 por mídia entre 5, e botão **Não é pra mim** que ajusta as sugestões na hora.
-- **Métricas do teste** (tela Perfil → Métricas do teste): tempo e toques para registrar, importações, sugestões aceitas e dispensadas.
-- **Importação do MyAnimeList** (animelist.xml ou .gz exportado no site) e **do Letterboxd** (ratings.csv, watched.csv, watchlist.csv do export).
-  Os arquivos são lidos no aparelho. O MAL usa o AniList para achar os gêneros (por id do MAL); o Letterboxd usa o TMDB (precisa da chave) e importa até 150 filmes, priorizando os avaliados.
-- **Mangá e livros**: mangá vem do AniList (sem chave, mesmo serviço do anime) e livros do Open Library (sem chave; busca, capa, sinopse, autor, nota).
-  O catálogo base tem 12 mangás e 13 livros. Mangá e anime com o mesmo nome são obras diferentes e não se confundem (ids `anilist:manga:N` e `anilist:N`).
-  O progresso de "em andamento" vira capítulo (mangá) ou página (livro). A importação por arquivo/usuário continua só para anime e filmes.
-- **Música (álbuns)**: busca, tags, capa e detalhes pelo MusicBrainz e Cover Art Archive (sem chave, mesmo estilo do Open Library). Só álbum de estúdio entra
-  (ao vivo, coletânea e remix são descartados). As tags da comunidade viram vibes, e há 3 vibes novas para música (energético, dançante, introspectivo).
-  O catálogo base tem 17 álbuns, 5 brasileiros. Álbum não tem nota pública no prior de qualidade (neutro) e "em andamento" vira "faixa em que você parou".
-  O MusicBrainz limita a cerca de 1 pedido por segundo por IP e exige User-Agent identificável. "Descobrir" álbuns usa só tags votadas por várias pessoas, mas o
-  MusicBrainz não ordena por popularidade, então a qualidade dessa lista é a parte mais provável de precisar de ajuste.
-- **Capas reais**: pôsteres do TMDB, capas do IGDB e do AniList. Itens do catálogo base buscam a capa uma vez (`/api/cover`) e guardam no aparelho. Sem chave ou sem imagem, fica a capa gerada.
-- **Resenha e diário**: em cada obra registrada, resenha (até 2000 caracteres) e a data em que você viu ou jogou. O Diário mostra tudo mês a mês.
-- **Listas**: crie listas misturando mídias e adicione itens pela página de cada obra.
-- **Estatísticas**: totais por mídia e status, nota média, distribuição das notas, concluídos por mês e as vibes que mais pesam no seu gosto.
-- **Página da obra com personalidade própria**: o fundo e os realces (botões, vibes, estrelas) usam a tonalidade dominante da capa, lida num canvas no aparelho. Se a imagem não permitir leitura (CORS) ou não houver capa, o tom vem das vibes do título. Contraste mínimo de 4,5:1 garantido em qualquer cor, nos dois temas (`src/lib/palette.ts`).
-- **Tema escuro**: segue o sistema; em Perfil dá para forçar Claro ou Escuro. Contraste conferido por script (`e2e/e2e_tema.py`).
-- **Instalável** na tela inicial (PWA).
-- **Busca e sugestões em catálogos reais**: AniList (sempre ligado, sem chave), TMDB (filmes e séries) e IGDB (jogos) quando as chaves
-  estiverem no `.env.local` (veja `.env.example`). Cada fonte falha sozinha: se uma cair, as outras e o catálogo local continuam.
-- **Métricas somadas com consentimento**: desligadas por padrão; ao aceitar (Importar ou Perfil), o app envia ao Supabase só tipo do evento,
-  números simples e um código anônimo do aparelho. Excluir os dados apaga o código.
-- **Privacidade**: exportar e excluir todos os dados (LGPD).
+```bash
+pip install playwright && playwright install chromium
+bash e2e/run.sh                     # todos os scripts
+bash e2e/run.sh e2e/e2e_social.py   # só um
+```
 
-## Publicar (Vercel)
+O `run.sh` sobe `e2e/mock.mjs` na porta 4010, que imita AniList, TMDB, IGDB, Open Library, MusicBrainz e Supabase. Depois compila o app apontando para o mock, serve na porta 3100 e roda cada script com o mock reiniciado. Nenhuma chave real é usada. Os logs ficam em `/tmp/e2e-*.log` e `/tmp/last-e2e.log`.
 
-1. Descompacte o zip, entre na pasta e rode `npx vercel` (faz login e cria o projeto) ou envie a pasta para um repositório no GitHub e importe em vercel.com/new.
-2. Em Settings → Environment Variables, cadastre `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (as duas já estão no seu `.env.local`),
-   `TMDB_READ_TOKEN`, `IGDB_CLIENT_ID` e `IGDB_CLIENT_SECRET`. As `NEXT_PUBLIC_*` precisam existir **antes** do build.
-3. No celular, abra o link e use "Adicionar à tela inicial": o app é instalável (PWA, `src/app/manifest.ts`).
+## Como funciona
 
-## O que ainda NÃO está feito (e o que isso significa)
-
-| Falta | Consequência hoje |
-|---|---|
-| **Importação testada com o AniList de verdade** | O código segue a API pública e foi testado com um servidor simulado. Teste com um usuário público real antes de qualquer coisa. |
-| **Open Library, AniList (mangá) e MusicBrainz de verdade** | Testados só com servidor simulado. Busque "Dom Casmurro", "Berserk" e "OK Computer" e confira capa, autor e tags. Para álbuns, veja também a aba Descobrir. O Open Library pede um User-Agent identificável: troque o contato em `src/lib/sources.ts` antes de divulgar. |
-| **TMDB e IGDB com chaves reais** | O código foi testado só com servidores simulados. Peça o token de leitura do TMDB e as credenciais do IGDB (Twitch), coloque no `.env.local` e teste buscando "Duna" e "Elden Ring". A consulta de "descobrir" do IGDB (filtro por gênero e tema) é a mais provável de precisar de ajuste. |
-| **Contas, sincronização e comunidade com o Supabase de verdade** | Código completo (`src/lib/cloud.ts`, `community.ts`, telas Conta no Perfil, `/comunidade` e `/u/[handle]`). O esquema e as regras de acesso (RLS) **estão aplicados e foram testados no banco real por SQL**. Já o fluxo do navegador (cadastro, e-mail de confirmação, login, sync, seguir) foi testado só contra um servidor simulado (`e2e/mock.mjs`): **nunca rodou com o Auth real**. Faça o roteiro "Ligar as contas" abaixo e teste com duas contas em dois aparelhos antes de convidar alguém. |
-| **Consulta das métricas somadas** | Os dados chegam em `test_events`; ninguém lê pela API pública. Some pelo SQL Editor do Supabase (veja `supabase/metricas.sql`). |
-| **Importações de MyAnimeList e Letterboxd com dados reais** | Testadas com arquivos de exemplo e servidores simulados. Teste com o seu export de verdade, principalmente o formato do `animelist.xml`. |
-| **Afinidade de gosto** | Fórmula simples e explicável (notas nas mesmas obras + vibes, ver `src/lib/social.ts`), com testes de propriedades. Não foi validada com pessoas reais; trate o número como um palpite divertido, não como medida. |
-| **Tempo de relógio entre aparelhos** | A sincronização resolve conflitos por carimbo de tempo por registro. Se o relógio de um aparelho estiver muito errado, a edição dele pode "ganhar" ou "perder" injustamente. Listas são resolvidas por lista inteira (a última edição vence). |
-
-## Como a recomendação funciona
-
-1. Cada item tem de 3 a 6 vibes de um vocabulário comum de 30 termos (`src/lib/vibes.ts`).
-2. O gosto do usuário soma as vibes dos itens avaliados, com peso `nota - 3` (nota 3 é neutra, abaixo pesa contra).
-   Concluído sem nota vale +0,5, abandonado vale -1 e "Quero ver" não entra. "Não é pra mim" tira 1 de cada vibe do item.
-3. Cada candidato recebe a soma do gosto nas suas vibes, dividida pela raiz do número de vibes, com bônus de 15% quando o motivo vem de outra mídia.
-4. O motivo é o item da biblioteca que mais contribuiu; as vibes citadas são as que os dois têm em comum.
-
-A tabela de vibes é a parte que mais precisa de revisão humana: se ela estiver ruim, as sugestões ficam estranhas.
-
-## Detalhes da obra e "O que ver hoje?"
-
-- A página de cada obra mostra sinopse, elenco ou estúdio, nota na fonte, onde assistir no Brasil (assinatura) e link do trailer. Os dados vêm de `/api/details`, que consulta TMDB, IGDB ou AniList no servidor. **Sem as chaves do TMDB/IGDB, filmes e jogos mostram só um aviso discreto**; anime funciona sem chave.
-- Em Descobrir, "O que ver hoje?" sorteia entre as 5 melhores sugestões, com filtros de origem (algo novo ou da sua lista de quero ver), mídia e clima.
-- Esse comportamento só foi testado contra respostas simuladas das APIs, não contra as APIs reais.
-
-## Navegação e computador
-
-- Em telas a partir de 900 px o menu vira barra lateral, o registro vira janela no centro e as listas ficam em duas colunas.
-- **Buscar** (menu ou tecla `/`): busca global com "+ Quero ver" em um toque e desfazer.
-- Biblioteca: ordenar (recentes, nota, A–Z, ano), filtrar pelo título (sem acento) e alternar lista/grade.
-- Progresso em "em andamento": episódio (anime e séries) ou horas jogadas, aparece na biblioteca.
-- Teste no navegador: `python3 e2e/e2e_nav.py`.
-
-## Perfil
-
-Nome editável, **foto de perfil e banner** (envio de JPG/PNG/WebP com zoom e enquadramento por arrastar ou controles; a imagem é recortada e
-reencodada no aparelho, o que remove EXIF/GPS, e fica só no navegador; sem foto, iniciais numa cor à escolha; banner automático pelo seu gosto, degradê por mídia ou
-imagem; tudo aparece também no cartão), arquétipo pelo gosto ("Explorador do lado escuro"), sequência semanal, gráfico das vibes por mídia, o que liga as mídias da pessoa,
-favoritos, 10 conquistas com progresso, meta do ano, **cartão em imagem** para compartilhar (gerado no aparelho) e uma área **Conexões** que mostra quais
-chaves (TMDB, IGDB) estão ativas, sem nunca expor o valor delas. Testes: `python3 e2e/e2e_perfil.py` e `python3 e2e/e2e_foto.py`.
-
-## Recomendação
-
-O recomendador v2 (nota relativa à pessoa, encolhimento, decaimento, afinidade por mídia, nota pública, diversidade) está descrito em `docs/recomendacao.md`,
-junto com o protocolo de avaliação, os resultados e o que eles não provam. Para rodar o laboratório: `npx tsx scripts/eval-full.ts` (cerca de 7 minutos) ou `npx tsx scripts/eval-tradeoff.ts` (1 minuto).
-
-## Testes
-
-- `npm test`: lógica pura, em `src/lib/__tests__`.
-- `e2e/`: fluxo completo no navegador (importar, favoritos, sugestões, registro, desfazer, exportar, excluir, 360 px).
-  Precisa de `pip install playwright`. Passos: `node e2e/mock.mjs` (imita AniList, TMDB, IGDB, Twitch e o Supabase na porta 4010), depois
-  `npm run build` e `npm start -p 3100` com `ANILIST_URL`, `TMDB_BASE`, `IGDB_BASE` e `TWITCH_TOKEN_URL` apontando para
-  `http://localhost:4010` (`TWITCH_TOKEN_URL` com `/oauth2/token`), `TMDB_READ_TOKEN=tmdbtoken`, `IGDB_CLIENT_ID=cid`,
-  `IGDB_CLIENT_SECRET=csecret` e `NEXT_PUBLIC_SUPABASE_URL=http://localhost:4010` (esta no `build`). Reinicie o mock antes de cada
-  script e rode `python3 e2e/e2e.py`, `python3 e2e/e2e_remote.py` (inclui as importações por arquivo, em `e2e/fixtures`) `python3 e2e/e2e_tema.py` e `python3 e2e/e2e_obra.py`, `python3 e2e/e2e_diario.py` e `python3 e2e/e2e_detalhes.py` (detalhes da obra e "O que ver hoje?"). Essas variáveis só existem para o teste. O mock também imita o Open Library (`OPENLIB_BASE=http://localhost:4010`). **Atalho:** `bash e2e/run.sh` faz tudo isso e roda todos os scripts, um por vez (`bash e2e/run.sh e2e/e2e_foto.py` roda só um; precisa de `MUSICBRAINZ_BASE=http://localhost:4010`, que o script já define).
-
-## Observações técnicas
-
-- Next.js 16: o scaffold vem com Cache Components ligado, que exige `Suspense` em todo hook de rota. Como o app é todo no cliente, foi desligado em `next.config.ts`.
-- O armazenamento fica atrás de `src/lib/store.ts` (`useLibrary` + ações). O app é local primeiro: a conta é opcional e o sync (`src/lib/cloud.ts`) só faz *merge* (soma) entre aparelho e nuvem, sem nunca apagar dado local por conta própria. As regras do merge estão em `src/lib/sync.ts` e têm testes de propriedade (comutativo, idempotente, associativo).
-- Termos de uso: AniList, TMDB e IGDB mudam as regras e pedem atribuição; confira antes de qualquer uso comercial.
-
-
-## Ligar as contas (Supabase) — passo a passo
-
-1. **Esquema:** já está aplicado no projeto `hobby-mvp`. Num projeto novo, rode `supabase/schema.sql` e `supabase/metricas.sql` no SQL Editor.
-2. **Chaves:** copie `.env.example` para `.env.local` e preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (Project Settings > API Keys). Nunca use a chave `service_role` no app.
-3. **Authentication > URL Configuration:** ponha em *Site URL* o endereço do app (ex.: `https://seu-app.vercel.app`) e em *Redirect URLs* `https://seu-app.vercel.app/**` e `http://localhost:3000/**`. Sem isso o link do e-mail de confirmação aponta para o lugar errado.
-4. **Authentication > Providers > Email:** deixe *Confirm email* ligado. Em *Password*, suba o mínimo para 8 e ligue a **proteção contra senhas vazadas** (Leaked password protection; pode exigir plano Pro).
-5. **E-mail:** o envio padrão do Supabase é limitado (poucos e-mails por hora) e serve só para testar. Para convidar mais gente, configure um SMTP próprio em *Authentication > SMTP Settings* e traduza os modelos em *Email Templates*.
-6. **Vercel:** cadastre as mesmas variáveis em *Settings > Environment Variables* e faça o deploy (feito por você; nenhuma chave passa por mim).
-7. **Teste:** crie uma conta no celular, registre algo, abra o app no notebook, entre na mesma conta e veja os registros juntarem. Publique o perfil em Comunidade com um segundo usuário e siga.
-
-### Resenhas e discussão
-
-Escreva a resenha ao registrar (ou depois, na página da obra). Se o seu perfil for público **e** "Mostrar também minhas resenhas" estiver marcado, ela aparece no seu perfil, no feed de quem te segue e na página da obra, em "O que a comunidade achou". Qualquer registro público tem um botão **Comentários** que abre a conversa. Quem tem perfil público comenta (até 500 caracteres; texto puro, nada de HTML). O autor apaga o próprio comentário e **você apaga qualquer comentário no seu perfil**. Em "Comunidade" há a lista "Comentários no seu perfil". Despublicar ou remover o registro apaga a conversa junto (cascata no banco). Há um freio de 10 comentários por minuto por pessoa.
-
-### Moderação: denunciar e bloquear
-
-Em cada comentário de outra pessoa há **Denunciar** (spam, ofensivo ou outro motivo) e **Bloquear**. Também dá para bloquear pelo perfil dela; quem você bloqueou aparece em *Comunidade > Pessoas bloqueadas*, com o botão de desbloquear. O que isso faz, **no banco** (não só na tela):
-
-- Bloquear tira o "seguir" dos dois lados, esconde os comentários da pessoa para você, e ela **não consegue mais seguir nem comentar no seu perfil**. Em outros perfis, ela continua comentando normalmente.
-- **Três denúncias de pessoas diferentes escondem o comentário** para todo mundo, menos o autor e o dono do perfil. Cada pessoa denuncia o mesmo comentário uma vez, não denuncia o próprio, e há teto de 20 denúncias por hora.
-- A migração é `supabase/migrations/stage6_moderation.sql` (já aplicada no projeto "hobby-mvp" e incluída em `supabase/schema.sql`).
-
-**Limites honestos:** não existe painel de moderação dentro do app. Quem decide o que fazer com comentário denunciado é você: `supabase/moderacao.sql` tem as consultas prontas (denúncias, reincidentes) e as ações comentadas (reexibir, apagar, tirar perfil da vitrine, apagar conta). O esconder automático por 3 denúncias pode ser abusado por 3 contas falsas. Também não há notificações (você vê o novo ao abrir Comunidade), respostas aninhadas nem edição de comentário. Se o Supabase avisar que `block_user` e `is_blocked_by` são funções "security definer" executáveis por usuários logados, é intencional (a segunda deixa uma pessoa descobrir se outra a bloqueou, o que é um vazamento pequeno e aceito).
-
-### Projeto Supabase gratuito pausa
-
-No plano gratuito o Supabase **pausa o projeto depois de cerca de uma semana sem uso**. Pausado, o login e a sincronização falham (o app local continua). Durante o desenvolvimento isso já aconteceu uma vez: reative em *Dashboard > Restore project* (leva alguns minutos). Para apresentar o Hobby, entre no app dois dias antes. Para uso real, o plano Pro não pausa.
-
-### Retrospectiva anual
-
-Em Estatísticas há "Ver minha retrospectiva do ano": obras concluídas no ano, por mídia, nota média, melhores notas, mês mais cheio, vibes do ano, primeira e última obra. Só entram registros **com data** (a data de hoje entra sozinha ao registrar; histórico importado sem data fica de fora e a tela avisa).
-
-### Segurança e robustez (etapa 6)
-
-- **Backup:** Perfil > Seus dados tem *Exportar* e *Restaurar backup*. Restaurar **soma** ao que já existe (nunca apaga), valendo o registro mais recente; arquivo que não é do Hobby é recusado.
-- **Limite nas APIs:** 150 requisições por minuto por IP (10 para importações), em `src/proxy.ts`. Fica na memória de cada instância, então em hospedagem serverless serve contra abuso casual; para abuso sério use o WAF da Vercel. `API_RATE_LIMIT` muda o teto geral.
-- **Cabeçalhos:** nosniff, Referrer-Policy, `frame-ancestors 'none'` (ninguém embute o app) e Permissions-Policy. **Não há CSP completa** (o script do tema e o Next usam scripts inline); ela exigiria nonces e é um próximo passo.
-- **Offline:** `public/sw.js` guarda as telas já visitadas e os arquivos do app (só em produção). Sem internet, as telas visitadas abrem e registrar funciona (tudo é local); busca e sincronização esperam a conexão. Telas nunca visitadas mostram uma página explicativa. Para limpar: *Configurações do navegador > Dados do site*.
-- **Várias abas:** o que você registra numa aba aparece na outra sem recarregar, e excluir tudo numa aba esvazia as outras.
-- **Armazenamento cheio:** se o navegador não deixar gravar, aparece um aviso com o caminho para exportar. Se o dado local estiver ilegível, o texto original fica guardado em `hobby:v1:corrupt` antes de começar vazio.
-- **Contato nas APIs abertas:** Open Library e MusicBrainz pedem contato no User-Agent. Defina `CONTACT_URL` (site ou e-mail) no `.env.local`; sem isso vai a página do projeto no GitHub.
-- **Desempenho:** cada tela baixa cerca de 800 KB de JavaScript (descomprimido; ~230 KB com gzip), dos quais o cliente do Supabase é ~260 KB (~69 KB gzip) e vai em toda página, mesmo sem conta. Carregá-lo só quando há sessão é a melhoria mais barata, mas mexe no núcleo da sincronização e ficou como próximo passo. Depois da primeira visita, o service worker guarda tudo.
-- **Acessibilidade:** `e2e/e2e_a11y.py` roda o axe-core nas telas principais (tema claro e escuro) e falha em problema grave. Isso cobre só o que máquina mede; não substitui testar com leitor de tela.
-
-### O que a parte social expõe
-
-Por padrão **nada** é público. Quem publica mostra nome, foto, bio, números por mídia, vibes mais fortes e os registros mais recentes (título, status e nota, até 200). Resenhas só com a opção marcada. Despublicar apaga a atividade. "Excluir minha conta" apaga conta, nuvem, perfil, atividade e seguidos. O banco impede, por regras de acesso, que alguém leia a biblioteca de outra pessoa, ou publique/siga em nome de outra.
-
-Para publicar, siga [docs/LAUNCH.md](docs/LAUNCH.md).
-
-## Etapa 7: painel, acompanhamento e social
-
-- **Início** (`/inicio`): saudação, meta do ano em anel, sequência de dias, "Continuar" com botão +1, sugestão rápida e últimos registros. A raiz `/` leva para cá.
-- **Menu**: Início · Biblioteca · + · Descobrir · Social · Perfil. A busca é a lupa do cabeçalho (atalho `/` continua).
-- **Acompanhamento**: campo *Total* (episódios, capítulos, páginas…) com barra de progresso; ao chegar no total a obra conclui sozinha com a data de hoje (com desfazer). Botão *Rever / Reler / Rejogar / Reouvir* conta quantas vezes você fez.
-- **Desafios** (Perfil, ao lado dos selos): 9 desafios calculadas na hora a partir da biblioteca, nada é guardado.
-- **Novidades sociais**: novos seguidores e comentários desde a última visita, com selo no menu Social. Exige `supabase/migrations/stage7_followers.sql` (política para ler quem te segue).
-- **Ver algo juntos** (`/u/<nome>`): sugestões a partir das vibes públicas dos dois; não usa títulos nem notas do outro.
-
-## Etapa 8: lote do benchmark
-
-Benchmark com Letterboxd, Trakt/Simkl, StoryGraph e Backloggd. O que entrou (sem depender de API externa):
-
-- **Etiquetas pessoais** por registro (até 8, minúsculas, 24 caracteres), com filtro na Biblioteca. Sincronizam com a conta como o resto do registro.
-- **Spoilers**: em resenhas e comentários, `||assim||` aparece borrado até tocar. O texto no banco guarda as marcas; nunca interpreta HTML.
-- **Exportar CSV** (Perfil): planilha com título, mídia, ano, status, nota, data, progresso, vezes, etiquetas e resenha. Textos que começam com `= + - @` ganham apóstrofo para a planilha não executar como fórmula.
-- **Listas ranqueadas**: posições numeradas e botões para subir/descer.
-
-Ficou de fora de propósito (depende de serviço externo): calendário de lançamentos, "onde assistir", auto-scrobble de streaming.
-
-
-## Etapa 9 — Pausei
-
-- Novo status **Pausei** (para o que você parou sem desistir): aparece no registro, na biblioteca (filtro), nas estatísticas e na atividade social.
-- Início ganhou o bloco **Retomar**, com botão para voltar a "Em andamento".
-- Importação do AniList/MyAnimeList: "Paused/On-Hold" agora vira Pausei (antes virava Em andamento).
-- Recomendação: pausado sem nota não pesa no gosto; com nota, conta como qualquer outra.
-- Migração `supabase/migrations/stage9_pausei.sql` (já aplicada no projeto `hobby-mvp`; em outro projeto, rode o arquivo).
-
-## Etapa 10 — Calendário de lançamentos
-
-- Página **Lançamentos** (aba da Biblioteca) com estreias e próximos episódios do que você quer ver, está vendo ou pausou, agrupados em esta semana, este mês e mais para frente.
-- Início mostra **Em breve** (até 14 dias).
-- Datas vêm dos detalhes de TMDB (estreia ou próximo episódio), IGDB (lançamento) e AniList (próximo episódio ou estreia). Consulta 4 obras por vez, até 40, e guarda por 12 horas no aparelho.
-- Limitação: só obras que vieram dessas fontes (as do catálogo de exemplo não têm data). Datas são as da fonte e podem mudar.
-
-- **Imagem da retrospectiva**: botão em Retrospectiva que gera um PNG 1080×1350 no aparelho (baixar ou compartilhar).
-- **Comentários**: respostas (um nível) e edição do próprio comentário, com marca "editado". Migração `supabase/migrations/stage10_comment_replies.sql` (já aplicada no `hobby-mvp`).
-
-## Etapa 11 — Painel de moderação e roteiro de beta
-
-- Página `/moderacao` (sem link no menu): lista os comentários denunciados, os mais denunciados primeiro, com esconder, mostrar de novo e apagar. Só entra quem está na tabela `admins`; a verificação e as ações rodam no banco (funções `is_admin`, `admin_reports`, `admin_moderate`), não no navegador.
-- Migração `supabase/migrations/stage11_moderation_panel.sql` (já aplicada no `hobby-mvp`). Para ser administrador, veja `docs/LAUNCH.md`.
-- `docs/BETA.md`: roteiro de duas semanas, entrevista de 15 minutos e métricas com os eventos que o app já envia.
-
-## Etapa 12 — Rede social: curtidas e gente com gosto parecido
-
-- **Curtir** registros e resenhas no feed da Comunidade e nos perfis públicos (contagem na hora, desfaz se o banco recusar; não dá para curtir o próprio registro). Precisa de perfil público, como comentar.
-- **Gente com gosto parecido** na Comunidade: pessoas públicas que registraram pelo menos 2 das mesmas obras que você (nota parecida pesa mais). Mostra "N obras em comum" e botão Seguir. Ignora quem você já segue ou bloqueou.
-- Migração `supabase/migrations/stage12_likes.sql` (já aplicada no `hobby-mvp`).
-- Limite: o cálculo usa até 150 das suas obras e 3.000 registros públicos; com muita gente será preciso mover para uma função no banco.
-
-## Etapa 13 — Recomendação e revisão geral
-
-- **Continuação não é descoberta.** "Segunda temporada" ou "Fullmetal Alchemist: Brotherhood" não aparecem para quem já tem a obra (anime, mangá, filmes e séries; jogos, livros e álbuns ficam de fora de propósito). Regra de título em `src/lib/franchise.ts`, porque as APIs não dão um id de franquia que valha entre fontes.
-- **Mesmo autor ou artista.** Livro e álbum de quem você já avaliou sobem (ou descem, se a nota foi baixa). O motivo diz "do mesmo autor". O catálogo base ganhou os autores dos livros.
-- **Explicação com duas obras** quando as duas pesaram quase igual, e **uma aposta** por lista na Descobrir: a última sugestão foge das suas vibes de sempre, marcada como tal.
-- **Mostrar mais** na Descobrir: pede as próximas páginas das fontes (até 4) em vez de repetir sempre os 20 mais populares. As rotas de busca e descoberta têm cache de borda.
-- Correções: "Restaurar dados de exemplo" apagava a biblioteca real (agora só soma, e só aparece com a biblioteca vazia); a Biblioteca abria só em "Concluídos" (agora "Todos"); quero ver mantinha a sequência de dias e o mapa de calor; Perfil dizia "Cinco mídias"; abas da Biblioteca cortavam "Estatísticas".
-- Limite honesto: franquia, autor e aposta são regras de produto, **não** foram medidas no laboratório sintético (ele não tem franquias nem autores). Ver `docs/recomendacao.md`.
-
-## Etapa 14 — Acabamento de produção
-
-- **Menos JavaScript em toda página.** O `supabase-js` (~270 KB) agora só é baixado quando existe conta (ou sinal de sessão no aparelho) ou quando a pessoa entra na nuvem. Quem usa só no aparelho não paga esse peso. Ver `src/lib/supabase.ts` (`loadSupabase`).
-- **Cabeçalhos de segurança**: CSP completa (sem `unsafe-eval`, sem frames, `connect-src` só para o próprio app e para o Supabase configurado), HSTS e COOP em `next.config.ts`. O `'unsafe-inline'` em scripts continua por causa do script do tema e dos scripts do próprio Next; trocar por nonce exigiria renderização dinâmica em todas as páginas.
-- **Relato de erros sem serviço externo**: erros do navegador vão para `/api/erro` e saem no log da Vercel com o prefixo `[hobby-erro]` (só tipo, começo da pilha e caminho sem query; sem IP, sem biblioteca). Limite de 10 por minuto, 5 por sessão. Desligue com `NEXT_PUBLIC_ERROR_REPORTS=off`. A página de privacidade avisa. Também há `global-error.tsx` para falha no layout.
-- **Curtidas recebidas** nas Novidades da Comunidade e no selo do menu.
-- Testes: `e2e/e2e_csp.py` roda **sem** bypass de CSP e confere as páginas principais e a criação de conta no mock; os demais e2e usam `e2e/_bypass/sitecustomize.py` porque o Playwright avalia texto com `eval`.
-- Limites honestos: o CSP foi testado só contra o mock do Supabase e as fontes simuladas; na Vercel, com imagens reais das APIs, confira o console do navegador no primeiro deploy (imagens vêm de hosts listados em `next.config.ts`).
+- **Local primeiro:** a biblioteca fica no aparelho (`src/lib/store.ts`). Com uma conta, `src/lib/cloud.ts` junta aparelho e nuvem sem apagar nada local (regras em `src/lib/sync.ts`).
+- **Catálogos:** as rotas `src/app/api/*` buscam no AniList, TMDB, IGDB, Open Library e MusicBrainz. Cada fonte falha sozinha: se uma cair, as outras e o catálogo local continuam. `src/proxy.ts` limita requisições por IP.
+- **Importação:** AniList (nome de usuário), MyAnimeList (`animelist.xml`/`.gz`) e Letterboxd (CSVs do export). Os arquivos são lidos no aparelho.
+- **Recomendação** (`src/lib/recommend.ts`, `src/lib/rec/`):
+  1. Cada obra tem de 3 a 6 "vibes" tiradas de um vocabulário comum (`src/lib/vibes.ts`).
+  2. O gosto soma as vibes das obras avaliadas, com peso `nota − 3`. Concluída sem nota vale +0,5, abandonada vale −1, e "Não é pra mim" desconta.
+  3. Cada candidata recebe a soma do gosto nas suas vibes, normalizada pelo número de vibes, com bônus quando o motivo vem de outra mídia. A explicação mostra a obra da biblioteca que mais contribuiu.
+- **Social** (precisa do Supabase): perfis públicos, seguir, resenhas, discussão com respostas, curtidas, denúncia/bloqueio e painel de moderação.
+- **Offline/PWA:** instalável; `public/sw.js` serve `public/offline.html` quando não há rede.
+- **Next.js 16:** Cache Components está desligado em `next.config.ts` porque o app roda todo no cliente.
