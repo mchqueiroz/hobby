@@ -27,6 +27,7 @@ Sem nenhuma chave o app já funciona: AniList (anime, mangá), Open Library (liv
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | jogos (app em dev.twitch.tv/console) | sem busca de jogos |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | conta, sincronização e parte social | o app funciona só no aparelho |
 | `NEXT_PUBLIC_SITE_URL` | links de compartilhamento e sitemap | usa o endereço local |
+| `CRON_SECRET` | só o cron da Vercel chama `/api/keepalive` | a rota fica aberta (inofensiva) |
 | `CONTACT_URL`, `NEXT_PUBLIC_CONTACT_URL`, `NEXT_PUBLIC_FEEDBACK_URL` | contato no User-Agent, na página de privacidade e no botão de feedback | valores padrão; sem o botão de feedback |
 
 Use a chave **publishable** do Supabase, nunca a `service_role`.
@@ -34,8 +35,9 @@ Use a chave **publishable** do Supabase, nunca a `service_role`.
 ### Supabase (opcional)
 
 1. No SQL Editor, rode `supabase/schema.sql`, `supabase/metricas.sql`, `supabase/moderacao.sql` e depois os arquivos de `supabase/migrations/` em ordem numérica (stage6 → stage12).
-2. Em *Authentication > URL Configuration*, ponha o endereço do app em *Site URL* e `http://localhost:3000/**` em *Redirect URLs*.
-3. Para testar: crie uma conta, registre algo, entre na mesma conta em outro aparelho e confira que os registros se juntam.
+2. Em *Authentication > URL Configuration*, ponha o endereço do app em *Site URL* e, em *Redirect URLs*, `https://SEU-APP/**` e `http://localhost:3000/**`. Sem isso os links de confirmação e de nova senha apontam para o lugar errado.
+3. Login com Google ou Apple: ligue o provedor em *Authentication > Providers*. O botão aparece no app sozinho, sem novo deploy (o app lê `/auth/v1/settings`).
+4. Para testar: crie uma conta, registre algo, entre na mesma conta em outro aparelho e confira que os registros se juntam.
 
 ## Testar
 
@@ -62,11 +64,13 @@ O `run.sh` sobe `e2e/mock.mjs` na porta 4010, que imita AniList, TMDB, IGDB, Ope
 
 - **Local primeiro:** a biblioteca fica no aparelho (`src/lib/store.ts`). Com uma conta, `src/lib/cloud.ts` junta aparelho e nuvem sem apagar nada local (regras em `src/lib/sync.ts`).
 - **Catálogos:** as rotas `src/app/api/*` buscam no AniList, TMDB, IGDB, Open Library e MusicBrainz. Cada fonte falha sozinha: se uma cair, as outras e o catálogo local continuam. `src/proxy.ts` limita requisições por IP.
-- **Importação:** AniList (nome de usuário), MyAnimeList (`animelist.xml`/`.gz`) e Letterboxd (CSVs do export). Os arquivos são lidos no aparelho.
+- **Importação:** AniList (nome de usuário), MyAnimeList (`animelist.xml`/`.gz`), Letterboxd (CSVs do export) e Goodreads ou StoryGraph (CSV, livros achados no Open Library). Os arquivos são lidos no aparelho. No primeiro uso dá para escrever os favoritos ("Dark, Persona 5, Kafka à beira-mar") e cada um é buscado nas fontes reais.
 - **Recomendação** (`src/lib/recommend.ts`, `src/lib/rec/`):
   1. Cada obra tem de 3 a 6 "vibes" tiradas de um vocabulário comum (`src/lib/vibes.ts`).
   2. O gosto soma as vibes das obras avaliadas, com peso `nota − 3`. Concluída sem nota vale +0,5, abandonada vale −1, e "Não é pra mim" desconta.
   3. Cada candidata recebe a soma do gosto nas suas vibes, normalizada pelo número de vibes, com bônus quando o motivo vem de outra mídia. A explicação mostra a obra da biblioteca que mais contribuiu.
 - **Social** (precisa do Supabase): perfis públicos, seguir, resenhas, discussão com respostas, curtidas, denúncia/bloqueio e painel de moderação.
+- **Supabase acordado:** `vercel.json` agenda `/api/keepalive` uma vez por dia (protegido por `CRON_SECRET`), porque o plano gratuito pausa após ~7 dias sem uso.
+- **Falhas de fonte:** saem no log da Vercel como `[hobby-fonte]`; erros do navegador como `[hobby-erro]`.
 - **Offline/PWA:** instalável; `public/sw.js` serve `public/offline.html` quando não há rede.
 - **Next.js 16:** Cache Components está desligado em `next.config.ts` porque o app roda todo no cliente.

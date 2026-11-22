@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { searchItems } from "../search";
+import type { Item } from "../types";
+import { pickBest, searchItems, splitFavorites } from "../search";
 import { EMPTY_LIBRARY, type Library } from "../types";
 
 describe("busca local", () => {
@@ -24,5 +25,24 @@ describe("busca local", () => {
     // o anime importado substitui o do catálogo; o mangá com o mesmo nome é outra obra e continua
     expect(r.filter((i) => i.media === "anime").map((i) => i.id)).toEqual(["anilist:1"]);
     expect(r.filter((i) => i.media === "manga")).toHaveLength(1);
+  });
+});
+
+describe("splitFavorites", () => {
+  it("separa por vírgula, ponto e vírgula, quebra de linha e ' e ' antes de maiúscula", () => {
+    expect(splitFavorites("Dark, Persona 5; Kafka à beira-mar e Radiohead\nBerserk")).toEqual(["Dark", "Persona 5", "Kafka à beira-mar", "Radiohead", "Berserk"]);
+  });
+  it("mantém ' e ' no meio de um título em minúscula, tira repetidos e respeita o máximo", () => {
+    expect(splitFavorites("Orgulho e preconceito, dark, Dark, x, Duna, Naruto", 3)).toEqual(["Orgulho e preconceito", "dark", "Duna"]);
+  });
+});
+
+describe("pickBest", () => {
+  const it_ = (title: string, vibes: string[] = ["drama humano"]) => ({ id: title, title, media: "filme", vibes }) as unknown as Item;
+  it("prefere título igual, depois começo igual com vibes, depois o primeiro com vibes", () => {
+    expect(pickBest("dark", [it_("Dark Souls"), it_("Dark")])?.title).toBe("Dark");
+    expect(pickBest("persona", [it_("A Persona", []), it_("Persona 5"), it_("Persona 4")])?.title).toBe("Persona 5");
+    expect(pickBest("xyz", [it_("Sem vibes", []), it_("Com vibes")])?.title).toBe("Com vibes");
+    expect(pickBest("xyz", [])).toBeNull();
   });
 });

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { cloudAvailable, deleteAccount, resetPassword, signIn, signOut, signUp, syncNow, useCloud } from "@/lib/cloud";
+import { useEffect, useState } from "react";
+import { authProviders, cloudAvailable, deleteAccount, resetPassword, signIn, signInWith, signOut, signUp, syncNow, updatePassword, useCloud, type Provider } from "@/lib/cloud";
 
 type Mode = "entrar" | "criar" | "recuperar";
 
@@ -15,6 +15,14 @@ export function Account() {
   const [busy, setBusy] = useState(false);
   const [info, setInfo] = useState<{ kind: "ok" | "erro"; text: string } | null>(null);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [changing, setChanging] = useState(false);
+  const [newPass, setNewPass] = useState("");
+  const [social, setSocial] = useState<Record<Provider, boolean>>({ google: false, apple: false });
+  useEffect(() => {
+    let alive = true;
+    void authProviders().then((p) => alive && setSocial(p));
+    return () => { alive = false; };
+  }, []);
 
   if (!cloudAvailable()) return null;
   if (!cloud.ready) return null;
@@ -29,6 +37,24 @@ export function Account() {
     if (mode === "criar" && r.needsConfirm) setInfo({ kind: "ok", text: "Conta criada. Enviamos um link de confirmação para o seu e-mail. Abra o link e depois entre." });
     else if (mode === "recuperar") setInfo({ kind: "ok", text: "Se esse e-mail tiver conta, você vai receber um link para criar uma nova senha." });
     else setPass("");
+  }
+
+  async function savePass(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setInfo(null);
+    const r = await updatePassword(newPass);
+    setBusy(false);
+    if (!r.ok) return setInfo({ kind: "erro", text: r.error });
+    setNewPass("");
+    setChanging(false);
+    setInfo({ kind: "ok", text: "Senha nova salva." });
+  }
+
+  async function social_(p: Provider) {
+    setInfo(null);
+    const r = await signInWith(p);
+    if (!r.ok) setInfo({ kind: "erro", text: r.error });
   }
 
   const status =
@@ -64,6 +90,17 @@ export function Account() {
                 </>
               )}
             </div>
+            {(cloud.recovery || changing) && (
+              <form onSubmit={savePass} className="mt12" data-testid="nova-senha">
+                <label className="label" htmlFor="nova-senha">{cloud.recovery ? "Escolha sua nova senha" : "Nova senha"}</label>
+                <input id="nova-senha" className="field" type="password" autoComplete="new-password" minLength={8} value={newPass} onChange={(e) => setNewPass(e.target.value)} autoFocus={cloud.recovery} />
+                <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>Mínimo de 8 caracteres.</p>
+                <button type="submit" className="btn mt8" disabled={busy || newPass.length < 8}>{busy ? "Aguarde…" : "Salvar senha"}</button>
+              </form>
+            )}
+            {!cloud.recovery && !changing && (
+              <button type="button" className="btn ghost small mt8" style={{ width: "auto" }} onClick={() => setChanging(true)}>Trocar senha</button>
+            )}
             {confirmDel && <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Isso apaga a conta, a cópia na nuvem, o perfil público e os seguidores, e limpa este aparelho. Não dá para desfazer.</p>}
           </>
         ) : (
@@ -72,6 +109,12 @@ export function Account() {
               Opcional. Com uma conta, seus registros ficam salvos na nuvem, passam entre aparelhos e você pode ter perfil público e seguir amigos.
               Sem conta, tudo continua só neste aparelho.
             </p>
+            {(social.google || social.apple) && (
+              <div className="row gap8 mt12" style={{ flexWrap: "wrap" }}>
+                {social.google && <button type="button" className="btn small" style={{ width: "auto" }} onClick={() => void social_("google")}>Entrar com Google</button>}
+                {social.apple && <button type="button" className="btn small" style={{ width: "auto" }} onClick={() => void social_("apple")}>Entrar com Apple</button>}
+              </div>
+            )}
             <div className="row gap8 mt12" role="tablist" style={{ flexWrap: "wrap" }}>
               {(["entrar", "criar", "recuperar"] as Mode[]).map((m) => (
                 <button key={m} type="button" role="tab" aria-selected={mode === m} className={`btn small ${mode === m ? "" : "ghost"}`} style={{ width: "auto" }} onClick={() => { setMode(m); setInfo(null); }}>

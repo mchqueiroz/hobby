@@ -25,6 +25,7 @@ export interface CloudState {
   phase: SyncPhase;
   lastSync: number | null;
   error: string | null;
+  recovery?: boolean; // chegou pelo link de "esqueci a senha": falta escolher a nova
 }
 let state: CloudState = { ready: false, email: null, userId: null, phase: "off", lastSync: null, error: null };
 const listeners = new Set<() => void>();
@@ -129,6 +130,7 @@ function attach(): Promise<void> {
       return;
     }
     sb.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") setState({ recovery: true });
       if (session && state.userId !== session.user.id) start(session);
       else if (!session && event === "SIGNED_OUT") stop();
     });
@@ -200,6 +202,40 @@ export async function resetPassword(email: string): Promise<AuthResult> {
   const sb = await client();
   if (!sb) return { ok: false, error: "Contas não estão ativadas nesta versão." };
   const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + "/perfil" });
+  return error ? { ok: false, error: authError(error) } : { ok: true };
+}
+
+/** Nova senha, depois do link de recuperação (ou para trocar a atual). */
+export async function updatePassword(password: string): Promise<AuthResult> {
+  const sb = await client();
+  if (!sb) return { ok: false, error: "Contas não estão ativadas nesta versão." };
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) return { ok: false, error: authError(error) };
+  setState({ recovery: false });
+  return { ok: true };
+}
+
+export type Provider = "google" | "apple";
+let providers: Promise<Record<Provider, boolean>> | null = null;
+
+/** Quais logins sociais estão ligados no Supabase. Ligou no painel, o botão aparece sem novo deploy. */
+export function authProviders(): Promise<Record<Provider, boolean>> {
+  const none = { google: false, apple: false };
+  if (!cloudAvailable()) return Promise.resolve(none);
+  providers ??= fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/settings`, {
+    headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY! },
+  })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d: { external?: Record<string, boolean> } | null) => ({ google: !!d?.external?.google, apple: !!d?.external?.apple }))
+    .catch(() => none);
+  return providers;
+}
+
+/** Entrar com Google ou Apple: sai para o provedor e volta para /perfil já com a sessão. */
+export async function signInWith(provider: Provider): Promise<AuthResult> {
+  const sb = await client();
+  if (!sb) return { ok: false, error: "Contas não estão ativadas nesta versão." };
+  const { error } = await sb.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.origin + "/perfil" } });
   return error ? { ok: false, error: authError(error) } : { ok: true };
 }
 
