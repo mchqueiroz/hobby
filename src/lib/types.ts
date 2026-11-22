@@ -6,7 +6,7 @@ export const MEDIAS: Media[] = ["anime", "manga", "jogo", "filme", "livro", "mus
 export function perMedia<T>(init: (m: Media) => T): Record<Media, T> {
   return Object.fromEntries(MEDIAS.map((m) => [m, init(m)])) as Record<Media, T>;
 }
-export type Status = "quero" | "andamento" | "concluido" | "abandonei";
+export type Status = "quero" | "andamento" | "concluido" | "abandonei" | "pausei";
 
 export const MEDIA_LABEL: Record<Media, string> = {
   anime: "Anime",
@@ -57,7 +57,16 @@ export const STATUS_LABEL: Record<Status, string> = {
   andamento: "Em andamento",
   concluido: "Concluído",
   abandonei: "Abandonei",
+  pausei: "Pausei",
 };
+
+/** O verbo de "quero ...": quem quer um jogo quer jogar, quem quer um livro quer ler. */
+const WANT_VERB: Record<Media, string> = { anime: "ver", filme: "ver", manga: "ler", livro: "ler", jogo: "jogar", musica: "ouvir" };
+export const wantVerb = (m: Media) => WANT_VERB[m];
+/** "Quero ver", "Quero jogar"... */
+export const wantLabel = (m: Media) => `Quero ${WANT_VERB[m]}`;
+/** Nome do status para uma obra específica (só "quero" muda de acordo com a mídia). */
+export const statusLabel = (s: Status, m: Media) => (s === "quero" ? wantLabel(m) : STATUS_LABEL[s]);
 
 export interface Item {
   id: string;
@@ -88,7 +97,42 @@ export interface Entry {
   date?: number;
   /** episódio em que parou (anime/série) ou horas jogadas (jogo). Só vale em "em andamento". */
   progress?: number;
+  /** quantos episódios/capítulos/páginas/horas a obra tem. Com isso o progresso vira barra e, ao chegar no total, a obra é concluída. */
+  total?: number;
+  /** etiquetas da própria pessoa ("para ver com a Ana", "reconfortante") */
+  tags?: string[];
+  /** quantas vezes a pessoa já fez (1 = só a primeira). Ausente vale 1. */
+  rounds?: number;
 }
+
+/** Progresso pronto para exibir: valor, total (se houver) e porcentagem (0 a 100). null quando não há progresso. */
+export function entryProgress(e: Pick<Entry, "progress" | "total">): { value: number; total?: number; pct?: number } | null {
+  const value = typeof e.progress === "number" && Number.isFinite(e.progress) && e.progress > 0 ? e.progress : 0;
+  const total = typeof e.total === "number" && Number.isFinite(e.total) && e.total > 0 ? e.total : undefined;
+  if (!value && !total) return null;
+  return { value, total, pct: total ? Math.min(100, Math.round((value / total) * 100)) : undefined };
+}
+
+/** Unidade do progresso, no singular, para rótulos como "+1 episódio". */
+export const PROGRESS_UNIT: Record<Media, string> = { anime: "episódio", filme: "episódio", manga: "capítulo", livro: "página", jogo: "hora", musica: "faixa" };
+
+export const MAX_TAGS = 8;
+export const MAX_TAG_LEN = 24;
+/** Limpa uma lista de etiquetas: sem espaços sobrando, minúsculas, sem repetidas, no máximo MAX_TAGS. */
+export function cleanTags(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const out: string[] = [];
+  for (const t of input) {
+    if (typeof t !== "string") continue;
+    const v = t.replace(/\s+/g, " ").trim().toLowerCase().slice(0, MAX_TAG_LEN).trim();
+    if (v && !out.includes(v)) out.push(v);
+    if (out.length >= MAX_TAGS) break;
+  }
+  return out;
+}
+
+/** "Rever", "Reler", "Rejogar", "Reouvir". */
+export const REDO_LABEL: Record<Media, string> = { anime: "Rever", filme: "Rever", manga: "Reler", livro: "Reler", jogo: "Rejogar", musica: "Reouvir" };
 
 export interface UserList {
   id: string;

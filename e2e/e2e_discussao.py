@@ -1,3 +1,4 @@
+import re
 import json, time, urllib.request
 from playwright.sync_api import sync_playwright
 
@@ -87,28 +88,28 @@ with sync_playwright() as p:
     check("Ana lê os comentários do Bruno", "Zagreus" in ana.get_by_test_id("conversa").inner_text())
     ana.wait_for_function("document.querySelectorAll('[data-testid=comentario]').length === 2")
     check("Ana (dona) pode apagar qualquer comentário", ana.locator("[data-testid=comentario] >> text=Apagar").count() == 2)
-    comment(ana, "O final com a Perséfone! Joga com a Arma do Estige.")
+    comment(ana, "O final com a ||Perséfone||! Joga com a Arma do Estige.")
     ana.wait_for_function("document.querySelectorAll('[data-testid=comentario]').length === 3")
-    ana.locator("[data-testid=comentario]").nth(1).get_by_role("button").click()   # apaga o comentário do HTML
+    ana.locator("[data-testid=comentario]").nth(1).get_by_role("button", name=re.compile("^Apagar")).click()   # apaga o comentário do HTML
     ana.wait_for_function("document.querySelectorAll('[data-testid=comentario]').length === 2")
     check("dona apagou o comentário do Bruno", len(cloud()["tables"]["comments"]) == 2)
 
     # ---- Bruno vê a resposta e não pode apagar a da Ana
     bru.goto(BASE + "/u/ana_dev"); bru.wait_for_selector("[data-testid=atividade]"); open_thread(bru)
     bru.wait_for_function("document.querySelectorAll('[data-testid=comentario]').length === 2")
-    check("Bruno vê a resposta da Ana", "Perséfone" in bru.get_by_test_id("conversa").inner_text())
+    check("Bruno vê a resposta da Ana", "Arma do Estige" in bru.get_by_test_id("conversa").inner_text())
     check("Bruno só tem 'Apagar' no próprio comentário", bru.locator("[data-testid=comentario] >> text=Apagar").count() == 1)
 
     # ---- página da obra: resenhas da comunidade (inclusive para visitante)
     bru.goto(URL_HADES); bru.wait_for_selector("[data-testid=resenhas-comunidade]")
     check("página da obra mostra a resenha da Ana", "Obra-prima" in bru.get_by_test_id("resenhas-comunidade").inner_text())
     open_thread(bru, bru.get_by_test_id("resenhas-comunidade")); bru.wait_for_selector("[data-testid=comentario]")
-    check("e a conversa dela", "Perséfone" in bru.get_by_test_id("resenhas-comunidade").inner_text())
+    check("e a conversa dela", "Arma do Estige" in bru.get_by_test_id("resenhas-comunidade").inner_text())
     vis = newpage()
     vis.goto(URL_HADES); vis.wait_for_selector("[data-testid=resenhas-comunidade]")
     open_thread(vis, vis.get_by_test_id("resenhas-comunidade"))
     vis.wait_for_selector("[data-testid=comentario]")
-    check("visitante lê a conversa", "Perséfone" in vis.get_by_test_id("conversa").inner_text())
+    check("visitante lê a conversa", "Arma do Estige" in vis.get_by_test_id("conversa").inner_text())
     check("visitante é convidado a entrar para comentar", vis.get_by_test_id("conversa").get_by_role("link", name="Entre na sua conta").count() == 1 and vis.locator("[data-testid=conversa] textarea").count() == 0)
     check("visitante não vê botão de apagar", vis.locator("[data-testid=comentario] >> text=Apagar").count() == 0)
 
@@ -131,10 +132,19 @@ with sync_playwright() as p:
     # ---- despublicar leva os comentários junto
     publish(ana, "ana_dev", True)
     publish(ana, "ana_dev", True)
+
+    bru.goto(BASE + '/comunidade'); bru.wait_for_selector('[data-testid=feed] li'); open_thread(bru)
+    bru.wait_for_selector("[data-testid=conversa] button.spoiler")
+    sp = bru.locator("[data-testid=conversa] button.spoiler")
+    check("spoiler vem escondido", sp.count() == 1 and "Perséfone" not in bru.get_by_test_id("conversa").inner_text() and "toque para ver" in sp.inner_text())
+    sp.click()
+    check("tocar revela o spoiler", "Perséfone" in sp.inner_text() and sp.get_attribute("aria-pressed") == "true")
+    check("o texto no banco continua com as marcas", any("||Perséfone||" in c["body"] for c in cloud()["tables"]["comments"]))
     ana.goto(BASE + "/comunidade"); ana.wait_for_selector("#pub-handle")
     ana.get_by_label("Tornar meu perfil público").uncheck(); ana.get_by_role("button", name="Salvar").click(); ana.wait_for_selector("[data-testid=publico-msg]")
     check("despublicar apaga a atividade e os comentários dela", until(lambda: not [c for c in cloud()["tables"]["comments"] if c["target_item"] == HADES]))
     check("sem erros de página", not errs, str(errs[:3]))
     b.close()
+
 print("FALHAS:", fails if fails else "nenhuma")
 raise SystemExit(1 if fails else 0)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeStats, dateFromInput, dateToInput, diaryGroups, effectiveDate } from "../stats";
+import { computeStats, dateFromInput, dateToInput, dayStreak, diaryGroups, effectiveDate, heatmap } from "../stats";
 import { EMPTY_LIBRARY, type Entry, type Library } from "../types";
 
 const NOW = new Date(2026, 10, 13, 12).getTime(); // 13/11/2026
@@ -83,5 +83,29 @@ describe("diaryGroups", () => {
     expect(g.map((x) => x.key)).toEqual(["2026-11", "2026-09"]);
     expect(g[0].rows.map((r) => r.item.title)).toEqual(["Death Note", "Hades"]);
     expect(g[0].label.toLowerCase()).toContain("novembro");
+  });
+});
+
+describe("sequência e mapa de calor", () => {
+  const noon = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12).getTime();
+  const now = noon(2026, 11, 22);
+  const A = "seed:anime:death-note";
+  const B = "seed:anime:monster";
+  const C = "seed:filme:parasita";
+
+  it("quero ver não mantém a sequência: só conta o que a pessoa de fato fez", () => {
+    const l = lib([e(A, { date: noon(2026, 11, 22) }), e(B, { status: "quero", date: noon(2026, 11, 21) }), e(C, { status: "quero", date: noon(2026, 11, 20) })]);
+    expect(dayStreak(l, now)).toMatchObject({ current: 1, best: 1, today: true });
+  });
+
+  it("andamento e pausei contam como atividade", () => {
+    const l = lib([e(A, { status: "andamento", date: noon(2026, 11, 22) }), e(B, { status: "pausei", date: noon(2026, 11, 21) })]);
+    expect(dayStreak(l, now).current).toBe(2);
+  });
+
+  it("o mapa de calor também ignora quero ver", () => {
+    const l = lib([e(A, { date: noon(2026, 11, 22) }), e(B, { status: "quero", date: noon(2026, 11, 22) })]);
+    const total = heatmap(l, 4, now).flat().reduce((a, d) => a + d.count, 0);
+    expect(total).toBe(1);
   });
 });

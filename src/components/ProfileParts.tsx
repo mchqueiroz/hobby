@@ -62,7 +62,7 @@ export function Hero({ lib, counts, total }: { lib: Library; counts: Record<Medi
             </form>
           ) : (
             <>
-              <h2 style={{ fontSize: 26, overflowWrap: "anywhere" }}>{name || "Seu perfil"}</h2>
+              <h2 style={{ fontSize: 26, overflowWrap: "anywhere" }}>{name || "Sem nome ainda"}</h2>
               <button type="button" className="linkbtn" onClick={() => { setDraft(name); setEditing(true); }}>
                 {name ? "Editar nome" : "Adicionar seu nome"}
               </button>
@@ -140,9 +140,9 @@ export function Favorites({ lib }: { lib: Library }) {
       <ul className="grid4" style={{ listStyle: "none" }}>
         {favs.map(({ entry, item }) => (
           <li key={item.id}>
-            <Link href={`/item/${encodeURIComponent(item.id)}`} aria-label={`${item.title}, ${MEDIA_LABEL[item.media]}`}>
+            <Link href={`/item/${encodeURIComponent(item.id)}`}>
               <Cover item={item} w={120} h={168} fs={12} />
-              <strong style={{ display: "block", fontSize: 13, marginTop: 6 }}>{item.title}</strong>
+              <strong style={{ display: "block", fontSize: 13, marginTop: 6 }}>{item.title}<span className="sr">, {MEDIA_LABEL[item.media]}</span></strong>
             </Link>
             <Rating value={entry.rating} size={12} />
           </li>

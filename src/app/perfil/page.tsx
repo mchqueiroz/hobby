@@ -4,11 +4,15 @@ import Link from "next/link";
 import { useState } from "react";
 import { getItem } from "@/lib/recommend";
 import { effectiveDate } from "@/lib/stats";
+import { achievements } from "@/lib/achievements";
+import { toCsv } from "@/lib/csv";
+import { ProgressBar } from "@/components/ui";
 import { ThemeChoice } from "@/components/ThemeChoice";
 import { Consent } from "@/components/Consent";
 import { deleteEverything } from "@/lib/cloud";
 import { Account } from "@/components/Account";
-import { exportData, loadDemo, setGoal, useHydrated, useLibrary } from "@/lib/store";
+import { exportData, loadDemo, restoreBackup, setGoal, useHydrated, useLibrary } from "@/lib/store";
+import { parseBackup } from "@/lib/sync";
 import { MEDIAS, MEDIA_LABEL, MEDIA_PLURAL, perMedia, type Media } from "@/lib/types";
 import { Cover, Header, Rating } from "@/components/ui";
 import { Badges, Connections, Favorites, Hero, ShareCard, TasteDna } from "@/components/ProfileParts";
@@ -19,6 +23,7 @@ export default function Perfil() {
   const lib = useLibrary();
   const ready = useHydrated();
   const [confirm, setConfirm] = useState(false);
+  const [restoreMsg, setRestoreMsg] = useState<{ ok: boolean; text: string } | null>(null);
   if (!ready) return null;
 
   const done = Object.values(lib.entries).filter((e) => e.status === "concluido");
@@ -35,6 +40,14 @@ export default function Perfil() {
     .map((e) => ({ e, item: getItem(lib, e.itemId) }))
     .filter((r) => r.item);
 
+  async function restore(file: File | undefined) {
+    if (!file) return;
+    const r = parseBackup(await file.text());
+    if (!r.ok) return setRestoreMsg({ ok: false, text: r.error });
+    const { entries, lists } = restoreBackup(r.lib);
+    setRestoreMsg({ ok: true, text: entries || lists ? `Backup restaurado: ${entries} registro${entries === 1 ? "" : "s"} e ${lists} lista${lists === 1 ? "" : "s"} novos. O que você já tinha foi mantido.` : "Nada novo no backup: tudo já estava aqui." });
+  }
+
   function download() {
     const data = { ...JSON.parse(exportData()), perfil: { nome: readName() } };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -46,9 +59,19 @@ export default function Perfil() {
     URL.revokeObjectURL(url);
   }
 
+  function downloadCsv() {
+    const blob = new Blob([toCsv(lib)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "hobby-biblioteca.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <>
-      <Header title="Seu perfil" sub="Cinco mídias, um só lugar" />
+      <Header title="Seu perfil" sub="O que você viu, jogou, leu e ouviu" />
 
       <div className="mt16"><Hero lib={lib} counts={counts} total={Object.keys(lib.entries).length} /></div>
 
@@ -99,6 +122,20 @@ export default function Perfil() {
         </>
       )}
 
+      <p className="label">Desafios</p>
+      <ul className="stack gap8" style={{ listStyle: "none", padding: 0 }} data-testid="conquistas">
+        {achievements(lib, (id) => getItem(lib, id)?.media).map((a) => (
+          <li key={a.id} className="card" style={{ padding: 12, opacity: a.done ? 1 : 0.85 }} data-done={a.done}>
+            <div className="row between" style={{ alignItems: "center" }}>
+              <strong style={{ fontSize: 14 }}>{a.done ? "✓ " : ""}{a.title}</strong>
+              <span className="muted" style={{ fontSize: 12 }}>{a.value}/{a.goal}</span>
+            </div>
+            <p className="muted" style={{ fontSize: 12.5, margin: "2px 0 8px" }}>{a.desc}</p>
+            <ProgressBar value={a.value} total={a.goal} label={`${a.title}: ${a.value} de ${a.goal}`} />
+          </li>
+        ))}
+      </ul>
+
       <ShareCard lib={lib} counts={counts} total={done.length} />
 
       <ThemeChoice />
@@ -106,6 +143,15 @@ export default function Perfil() {
       <Connections />
 
       <Account />
+
+      <p className="label">Ajuda e legal</p>
+      <div className="card">
+        <p className="row gap8" style={{ flexWrap: "wrap", fontSize: 14 }}>
+          <Link href="/privacidade" style={{ textDecoration: "underline" }}>Privacidade</Link>
+          <Link href="/termos" style={{ textDecoration: "underline" }}>Termos de uso</Link>
+          {process.env.NEXT_PUBLIC_FEEDBACK_URL && <a href={process.env.NEXT_PUBLIC_FEEDBACK_URL} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }} data-testid="feedback">Enviar feedback</a>}
+        </p>
+      </div>
 
       <p className="label">Seus dados</p>
       <div className="card">
@@ -117,6 +163,12 @@ export default function Perfil() {
         </p>
         <div className="row gap8 mt12" style={{ flexWrap: "wrap" }}>
           <button type="button" className="btn ghost small" style={{ width: "auto" }} onClick={download}>Exportar meus dados</button>
+          <button type="button" className="btn ghost small" style={{ width: "auto" }} onClick={downloadCsv}>Exportar planilha (CSV)</button>
+          <label className="btn ghost small" style={{ width: "auto", cursor: "pointer", position: "relative" }}>
+            Restaurar backup
+            <input type="file" accept="application/json,.json" data-testid="restaurar" style={{ position: "absolute", width: 1, height: 1, opacity: 0, overflow: "hidden" }}
+              onChange={(e) => { void restore(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
           {!confirm ? (
             <button type="button" className="btn danger small" style={{ width: "auto" }} onClick={() => setConfirm(true)}>Excluir meus dados</button>
           ) : (
@@ -126,12 +178,15 @@ export default function Perfil() {
             </>
           )}
         </div>
+        {restoreMsg && <p role="status" data-testid="restaurar-msg" className={restoreMsg.ok ? "muted" : "err"} style={{ fontSize: 13, marginTop: 10 }}>{restoreMsg.text}</p>}
       </div>
 
       <Consent />
 
       <div className="row gap8 mt16" style={{ flexWrap: "wrap" }}>
-        <button type="button" className="btn ghost small" style={{ width: "auto" }} onClick={loadDemo}>Restaurar dados de exemplo</button>
+        {Object.keys(lib.entries).length === 0 && (
+          <button type="button" className="btn ghost small" style={{ width: "auto" }} onClick={loadDemo}>Carregar dados de exemplo</button>
+        )}
         <Link href="/debug" className="btn ghost small" style={{ width: "auto" }}>Métricas do teste</Link>
       </div>
     </>

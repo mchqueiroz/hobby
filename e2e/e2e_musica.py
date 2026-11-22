@@ -28,7 +28,7 @@ with sync_playwright() as p:
 
     check("Descobrir tem o filtro de álbuns", pg.locator("button.chip", has_text="Álbuns").count() == 1)
     pg.locator("button.chip", has_text="Álbuns").click(); pg.wait_for_timeout(400)
-    tags = [t for t in pg.locator("main .tag").all_inner_texts() if t != "Brasil"]
+    tags = [t for t in pg.locator("main .tag").all_inner_texts() if t not in ("Brasil", "Aposta")]
     check("filtro de álbuns: há sugestões e só de álbuns", len(tags) > 0 and set(tags) == {"Álbum"}, str(tags))
     check("sugestão de álbum mostra o artista", pg.locator("main").inner_text().count("·") >= 0)
 
@@ -36,7 +36,7 @@ with sync_playwright() as p:
     pg.fill("#busca-global", "disco mock")
     pg.wait_for_selector("li >> text=Disco Mock")
     check("busca mostra o álbum e não o ao vivo", pg.locator("li", has_text="Disco Mock").count() >= 1 and pg.locator("text=Ao Vivo").count() == 0)
-    pg.get_by_role("button", name="Quero ver Disco Mock").click()
+    pg.get_by_role("button", name="Quero ouvir Disco Mock").click()
     ent = pg.evaluate("() => JSON.parse(localStorage.getItem('hobby:v1')).entries")
     check("álbum entra na biblioteca", ent.get(f"musicbrainz:{ID}", {}).get("status") == "quero")
 

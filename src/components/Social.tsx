@@ -1,10 +1,12 @@
 "use client";
 
+import { RichText } from "./RichText";
 import Link from "next/link";
 import { initials } from "@/lib/profile";
 import { affinity, type Affinity, type ActivityRow } from "@/lib/social";
-import type { PublicProfile, ThreadRef } from "@/lib/community";
-import { MEDIAS, MEDIA_LABEL, MEDIA_SHORT, STATUS_LABEL, type Library, type Media } from "@/lib/types";
+import { setLike, type LikeInfo, type PublicProfile, type ThreadRef } from "@/lib/community";
+import { useState } from "react";
+import { MEDIAS, MEDIA_LABEL, MEDIA_SHORT, statusLabel, wantVerb, type Library, type Media } from "@/lib/types";
 import { Rating } from "./ui";
 import { Thread } from "./Thread";
 
@@ -51,22 +53,52 @@ export function PersonRow({ p, lib, action }: { p: PublicProfile; lib: Library; 
   );
 }
 
-export function ActivityLine({ r, who, when, thread, count, onThreadChange, hideTitle }: {
+/** Curtir uma atividade. Mostra a resposta na hora e desfaz se o banco recusar. */
+export function LikeButton({ me, thread, info }: { me: string; thread: ThreadRef; info?: LikeInfo }) {
+  const [s, setS] = useState<LikeInfo>(info ?? { count: 0, liked: false });
+  const [err, setErr] = useState("");
+  const own = thread.user === me;
+  async function toggle() {
+    const next = { count: Math.max(0, s.count + (s.liked ? -1 : 1)), liked: !s.liked };
+    const prev = s;
+    setS(next); setErr("");
+    const r = await setLike(me, thread, next.liked);
+    if (!r.ok) { setS(prev); setErr(r.error); }
+  }
+  return (
+    <span style={{ display: "inline-flex", flexDirection: "column" }}>
+      <button type="button" className="chip" data-testid="curtir" aria-pressed={s.liked} disabled={own} onClick={() => void toggle()}
+        aria-label={own ? `${s.count} curtidas no seu registro` : s.liked ? "Descurtir" : "Curtir"}>
+        {s.liked ? "Curtido" : "Curtir"}<span className="n" data-testid="curtidas">{s.count}</span>
+      </button>
+      {err && <span role="status" data-testid="curtir-erro" style={{ fontSize: 12, color: "var(--danger)" }}>{err}</span>}
+    </span>
+  );
+}
+
+export function ActivityLine({ r, who, when, thread, count, onThreadChange, hideTitle, like }: {
   r: ActivityRow; who?: React.ReactNode; when?: string;
   /** quando informado, mostra a conversa desse registro */
   thread?: ThreadRef; count?: number; onThreadChange?: () => void; hideTitle?: boolean;
+  /** curtidas deste registro; sem isso o botão não aparece */
+  like?: { me: string; info?: LikeInfo };
 }) {
-  const verb = r.status === "concluido" ? "terminou" : r.status === "andamento" ? "está em" : r.status === "quero" ? "quer ver" : "abandonou";
+  const verb = r.status === "concluido" ? "terminou" : r.status === "andamento" ? "está em" : r.status === "quero" ? `quer ${wantVerb(r.item.media)}` : r.status === "pausei" ? "pausou" : "abandonou";
   return (
     <li className="card" style={{ padding: 12 }}>
       <div style={{ fontSize: 14 }}>
-        {who} {who ? verb : STATUS_LABEL[r.status]}{hideTitle ? "" : <> <strong>{r.item.title}</strong></>}
+        {who} {who ? verb : statusLabel(r.status, r.item.media)}{hideTitle ? "" : <> <strong>{r.item.title}</strong></>}
         {!hideTitle && <span className="muted"> · {MEDIA_LABEL[r.item.media]}{r.item.year ? ` · ${r.item.year}` : ""}</span>}
       </div>
       {r.rating !== null && <div className="mt8"><Rating value={r.rating} /></div>}
-      {r.review && <p style={{ fontSize: 14, marginTop: 6, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.review}</p>}
+      {r.review && <RichText text={r.review} style={{ fontSize: 14, marginTop: 6 }} />}
       {when && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{new Date(when).toLocaleDateString("pt-BR")}</div>}
-      {thread && <Thread thread={thread} count={count} onChange={onThreadChange} />}
+      {thread && (
+        <div className="row gap8 mt8" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+          {like && <LikeButton key={`${thread.user}|${thread.item}|${like.info?.count ?? "-"}|${like.info?.liked ?? "-"}`} me={like.me} thread={thread} info={like.info} />}
+          <Thread thread={thread} count={count} onChange={onThreadChange} />
+        </div>
+      )}
     </li>
   );
 }

@@ -57,7 +57,7 @@ const STATUS: Record<AniListEntry["status"], Status> = {
   COMPLETED: "concluido",
   CURRENT: "andamento",
   REPEATING: "andamento",
-  PAUSED: "andamento",
+  PAUSED: "pausei",
   PLANNING: "quero",
   DROPPED: "abandonei",
 };
@@ -78,7 +78,7 @@ export function mapAniList(res: AniListResponse, now = Date.now()): Imported {
   const seen = new Set<number>();
   const items: Item[] = [];
   const entries: Entry[] = [];
-  const counts: Record<Status, number> = { quero: 0, andamento: 0, concluido: 0, abandonei: 0 };
+  const counts: Record<Status, number> = { quero: 0, andamento: 0, concluido: 0, abandonei: 0, pausei: 0 };
   let withoutVibes = 0;
 
   for (const list of lists) {

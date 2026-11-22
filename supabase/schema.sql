@@ -50,7 +50,7 @@ create table if not exists public.activity (
   user_id uuid not null references auth.users(id) on delete cascade,
   item_id text not null check (char_length(item_id) <= 120),
   item jsonb not null check (pg_column_size(item) <= 2000),
-  status text not null check (status in ('quero','andamento','concluido','abandonei')),
+  status text not null check (status in ('quero','andamento','concluido','abandonei','pausei')),
   rating numeric check (rating is null or (rating >= 0.5 and rating <= 5)),
   review text check (review is null or char_length(review) <= 2000),
   updated_at timestamptz not null default now(),
@@ -163,3 +163,215 @@ begin
   return new;
 end $$;
 create trigger comments_rate before insert on public.comments for each row execute function public.limit_comment_rate();
+
+
+-- ===== Etapa 6: moderação (bloquear pessoas, denunciar comentários). Já aplicado no projeto "hobby-mvp"; também em supabase/migrations/stage6_moderation.sql =====
+-- Moderação: bloquear pessoas e denunciar comentários.
+
+-- ---------- bloqueios ----------
+create table public.blocks (
+  blocker uuid not null references auth.users(id) on delete cascade,
+  blocked uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (blocker, blocked),
+  check (blocker <> blocked)
+);
+create index blocks_blocked_idx on public.blocks (blocked);
+alter table public.blocks enable row level security;
+create policy blocks_select on public.blocks for select to authenticated using (blocker = (select auth.uid()));
+create policy blocks_delete on public.blocks for delete to authenticated using (blocker = (select auth.uid()));
+revoke all on public.blocks from anon, authenticated;
+grant select, delete on public.blocks to authenticated;  -- criar bloqueio só pela função block_user
+
+-- bloqueia e já desfaz o "seguir" nos dois sentidos
+create or replace function public.block_user(p_user uuid) returns void language plpgsql security definer set search_path = '' as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'não autenticado' using errcode = '42501'; end if;
+  if p_user is null or p_user = me then raise exception 'alvo inválido' using errcode = '22023'; end if;
+  insert into public.blocks (blocker, blocked) values (me, p_user) on conflict do nothing;
+  delete from public.follows where (follower_id = me and followee_id = p_user) or (follower_id = p_user and followee_id = me);
+end $$;
+revoke all on function public.block_user(uuid) from public, anon;
+grant execute on function public.block_user(uuid) to authenticated;
+
+-- "esta pessoa me bloqueou?" (precisa ser security definer: quem foi bloqueado não enxerga a tabela)
+create or replace function public.is_blocked_by(p_user uuid) returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.blocks where blocker = p_user and blocked = auth.uid());
+$$;
+revoke all on function public.is_blocked_by(uuid) from public, anon;
+grant execute on function public.is_blocked_by(uuid) to authenticated;
+
+-- quem foi bloqueado não segue nem comenta no perfil de quem bloqueou
+drop policy follows_insert on public.follows;
+create policy follows_insert on public.follows for insert to authenticated
+  with check (follower_id = (select auth.uid())
+    and exists (select 1 from public.profiles p where p.id = followee_id and p.is_public)
+    and not public.is_blocked_by(followee_id));
+
+-- ---------- denúncias ----------
+alter table public.comments add column hidden boolean not null default false;
+
+create table public.reports (
+  id uuid primary key default gen_random_uuid(),
+  reporter uuid not null references auth.users(id) on delete cascade,
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  reason text not null check (reason in ('spam', 'ofensivo', 'outro')),
+  created_at timestamptz not null default now(),
+  unique (reporter, comment_id)
+);
+create index reports_comment_idx on public.reports (comment_id);
+alter table public.reports enable row level security;
+create policy reports_select on public.reports for select to authenticated using (reporter = (select auth.uid()));
+create policy reports_insert on public.reports for insert to authenticated
+  with check (reporter = (select auth.uid())
+    and exists (select 1 from public.comments c where c.id = comment_id and c.author_id <> (select auth.uid())));
+revoke all on public.reports from anon, authenticated;
+grant select, insert on public.reports to authenticated;
+
+-- teto de 20 denúncias por hora por pessoa (evita denúncia em massa)
+create or replace function public.limit_report_rate() returns trigger language plpgsql set search_path = '' as $$
+begin
+  if (select count(*) from public.reports where reporter = new.reporter and created_at > now() - interval '1 hour') >= 20 then
+    raise exception 'muitas denúncias em pouco tempo' using errcode = '54000';
+  end if;
+  return new;
+end $$;
+create trigger reports_rate before insert on public.reports for each row execute function public.limit_report_rate();
+
+-- 3 denúncias de pessoas diferentes escondem o comentário (o autor e o dono do perfil ainda o veem)
+create or replace function public.hide_reported() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if (select count(distinct reporter) from public.reports where comment_id = new.comment_id) >= 3 then
+    update public.comments set hidden = true where id = new.comment_id;
+  end if;
+  return new;
+end $$;
+revoke all on function public.hide_reported() from public, anon, authenticated;
+create trigger reports_hide after insert on public.reports for each row execute function public.hide_reported();
+
+-- ---------- comentários: esconder denunciados e bloqueados; barrar quem foi bloqueado ----------
+drop policy comments_select on public.comments;
+create policy comments_select on public.comments for select to anon, authenticated
+  using (
+    (author_id = (select auth.uid()) or target_user = (select auth.uid())
+      or exists (select 1 from public.profiles p where p.id = comments.target_user and p.is_public))
+    and (not hidden or author_id = (select auth.uid()) or target_user = (select auth.uid()))
+    and not exists (select 1 from public.blocks b where b.blocker = (select auth.uid()) and b.blocked = comments.author_id)
+  );
+drop policy comments_insert on public.comments;
+create policy comments_insert on public.comments for insert to authenticated
+  with check (author_id = (select auth.uid())
+    and exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.is_public)
+    and exists (select 1 from public.profiles p where p.id = comments.target_user and p.is_public)
+    and not public.is_blocked_by(comments.target_user));
+
+-- Etapa 7: quem me segue pode ser lido por mim (para "novos seguidores").
+-- Antes só era possível ler as linhas em que EU era o seguidor.
+-- Efeito: cada pessoa vê a lista de quem a segue (todos têm perfil público); nada além disso.
+create policy follows_select_incoming on public.follows for select to authenticated
+  using (followee_id = (select auth.uid()));
+-- Etapa 10: respostas (um nível) e edição de comentários.
+alter table public.comments
+  add column if not exists parent_id uuid references public.comments(id) on delete cascade,
+  add column if not exists edited_at timestamptz;
+create index if not exists comments_parent_idx on public.comments (parent_id);
+
+-- Resposta só vale para um comentário de nível 1 da mesma conversa.
+create or replace function public.comments_check_parent() returns trigger
+language plpgsql security invoker set search_path = '' as $$
+declare p record;
+begin
+  if new.parent_id is not null then
+    select target_user, target_item, parent_id into p from public.comments where id = new.parent_id;
+    if not found or p.parent_id is not null or p.target_user <> new.target_user or p.target_item <> new.target_item then
+      raise exception 'resposta inválida' using errcode = '23514';
+    end if;
+  end if;
+  return new;
+end $$;
+revoke all on function public.comments_check_parent() from public, anon, authenticated;
+drop trigger if exists comments_parent_check on public.comments;
+create trigger comments_parent_check before insert on public.comments for each row execute function public.comments_check_parent();
+
+-- Só o autor edita, e só o texto (e a marca de edição).
+drop policy if exists comments_update on public.comments;
+create policy comments_update on public.comments for update to authenticated
+  using (author_id = (select auth.uid()))
+  with check (author_id = (select auth.uid()));
+grant update (body, edited_at) on public.comments to authenticated;
+-- Etapa 11: painel de moderação. Administradores ficam numa tabela que ninguém lê pela API;
+-- só as funções abaixo (security definer) consultam. Para virar admin, rode no SQL Editor:
+--   insert into public.admins (user_id) values ('<seu uuid de auth.users>');
+create table if not exists public.admins (user_id uuid primary key references auth.users(id) on delete cascade);
+alter table public.admins enable row level security;
+revoke all on public.admins from anon, authenticated;
+
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.admins where user_id = (select auth.uid()));
+$$;
+revoke all on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;
+
+-- Comentários denunciados, os mais denunciados primeiro.
+create or replace function public.admin_reports()
+returns table (comment_id uuid, body text, author_id uuid, author_handle text, target_user uuid, target_item text, hidden boolean, reports int, reasons text[], last_report timestamptz)
+language plpgsql stable security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'não autorizado' using errcode = '42501'; end if;
+  return query
+    select c.id, c.body, c.author_id, p.handle, c.target_user, c.target_item, c.hidden,
+           count(r.id)::int, array_agg(distinct r.reason), max(r.created_at)
+      from public.reports r
+      join public.comments c on c.id = r.comment_id
+      left join public.profiles p on p.id = c.author_id
+     group by c.id, c.body, c.author_id, p.handle, c.target_user, c.target_item, c.hidden
+     order by count(r.id) desc, max(r.created_at) desc
+     limit 100;
+end $$;
+revoke all on function public.admin_reports() from public, anon;
+grant execute on function public.admin_reports() to authenticated;
+
+-- hide: esconde; restore: mostra de novo e limpa as denúncias; delete: apaga o comentário.
+create or replace function public.admin_moderate(p_comment uuid, p_action text) returns void
+language plpgsql security definer set search_path = '' as $$
+begin
+  if not public.is_admin() then raise exception 'não autorizado' using errcode = '42501'; end if;
+  if p_action = 'hide' then update public.comments set hidden = true where id = p_comment;
+  elsif p_action = 'restore' then
+    update public.comments set hidden = false where id = p_comment;
+    delete from public.reports where comment_id = p_comment;
+  elsif p_action = 'delete' then delete from public.comments where id = p_comment;
+  else raise exception 'ação inválida' using errcode = '22023';
+  end if;
+end $$;
+revoke all on function public.admin_moderate(uuid, text) from public, anon;
+grant execute on function public.admin_moderate(uuid, text) to authenticated;
+-- Etapa 12: curtidas em atividades (registros e resenhas públicos).
+create table if not exists public.likes (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  target_user uuid not null,
+  target_item text not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, target_user, target_item),
+  check (user_id <> target_user),
+  foreign key (target_user, target_item) references public.activity (user_id, item_id) on delete cascade
+);
+create index if not exists likes_target_idx on public.likes (target_user, target_item);
+alter table public.likes enable row level security;
+create policy likes_select on public.likes for select to anon, authenticated
+  using (
+    (user_id = (select auth.uid()) or target_user = (select auth.uid())
+      or exists (select 1 from public.profiles p where p.id = likes.target_user and p.is_public))
+    and not exists (select 1 from public.blocks b where b.blocker = (select auth.uid()) and b.blocked = likes.user_id)
+  );
+create policy likes_insert on public.likes for insert to authenticated
+  with check (user_id = (select auth.uid())
+    and exists (select 1 from public.profiles p where p.id = (select auth.uid()) and p.is_public)
+    and exists (select 1 from public.profiles p where p.id = likes.target_user and p.is_public)
+    and not public.is_blocked_by(likes.target_user));
+create policy likes_delete on public.likes for delete to authenticated using (user_id = (select auth.uid()));
+revoke all on public.likes from anon, authenticated;
+grant select on public.likes to anon, authenticated;
+grant insert, delete on public.likes to authenticated;

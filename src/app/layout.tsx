@@ -6,9 +6,13 @@ import "@fontsource-variable/inter";
 import "./globals.css";
 import { THEME_BOOT } from "@/lib/theme";
 import { Shell } from "@/components/Shell";
+import { SITE_URL } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Hobby",
+  metadataBase: new URL(SITE_URL),
+  title: { default: "Hobby: todos os seus hobbies em um perfil", template: "%s · Hobby" },
+  openGraph: { type: "website", siteName: "Hobby", locale: "pt_BR", title: "Hobby", description: "Todos os seus hobbies em um perfil. A próxima descoberta vem de qualquer mídia.", images: [{ url: "/og.png", width: 1200, height: 630, alt: "Hobby" }] },
+  twitter: { card: "summary_large_image", title: "Hobby", description: "Todos os seus hobbies em um perfil.", images: ["/og.png"] },
   description: "Todos os seus hobbies em um perfil. A próxima descoberta vem de qualquer mídia.",
   appleWebApp: { capable: true, title: "Hobby", statusBarStyle: "default" },
   icons: { apple: "/icon-192.png" },

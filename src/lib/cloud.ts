@@ -2,7 +2,7 @@
 
 import type { Session } from "@supabase/supabase-js";
 import { useSyncExternalStore } from "react";
-import { cloudAvailable, supabase } from "./supabase";
+import { cloudAvailable, loadSupabase, mayHaveSession, supabase } from "./supabase";
 import { forgetProfile } from "./profile";
 import { forgetSocial, loadMine, reconcileActivity } from "./community";
 import { applySynced, deleteAll, getLibrary, subscribeLibrary } from "./store";
@@ -119,29 +119,48 @@ function stop() {
 }
 
 let booted = false;
-/** Chamado uma vez pelo Shell: lê a sessão salva e passa a acompanhar entradas e saídas. */
+let attached: Promise<void> | null = null;
+
+/** Baixa o supabase-js e passa a acompanhar entradas e saídas. Idempotente: a primeira chamada faz o trabalho, as outras esperam por ele. */
+function attach(): Promise<void> {
+  attached ??= loadSupabase().then((sb) => {
+    if (!sb) {
+      setState({ ready: true });
+      return;
+    }
+    sb.auth.onAuthStateChange((event, session) => {
+      if (session && state.userId !== session.user.id) start(session);
+      else if (!session && event === "SIGNED_OUT") stop();
+    });
+    // volta para a aba / reconecta: sincroniza de novo
+    window.addEventListener("online", () => schedule(300));
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && state.userId) schedule(300);
+    });
+    return sb.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        if (state.userId !== data.session.user.id) start(data.session);
+      } else setState({ ready: true });
+    });
+  });
+  return attached;
+}
+
+/** Chamado uma vez pelo Shell. Sem sessão salva nada é baixado: o supabase-js só chega quando a pessoa entra numa conta. */
 export function bootCloud() {
   if (booted) return;
   booted = true;
-  const sb = supabase();
-  if (!sb) {
+  if (!cloudAvailable() || !mayHaveSession()) {
     setState({ ready: true });
     return;
   }
-  sb.auth.onAuthStateChange((event, session) => {
-    if (session && state.userId !== session.user.id) start(session);
-    else if (!session && event === "SIGNED_OUT") stop();
-  });
-  void sb.auth.getSession().then(({ data }) => {
-    if (data.session) {
-      if (state.userId !== data.session.user.id) start(data.session);
-    } else setState({ ready: true });
-  });
-  // volta para a aba / reconecta: sincroniza de novo
-  window.addEventListener("online", () => schedule(300));
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && state.userId) schedule(300);
-  });
+  void attach();
+}
+
+/** Cliente pronto para uma ação da conta (entrar, criar, recuperar senha). */
+async function client() {
+  await attach();
+  return supabase();
 }
 
 /* ------------------------------ ações da conta ------------------------------ */
@@ -161,7 +180,7 @@ function authError(e: { code?: string; message?: string } | null): string {
 }
 
 export async function signUp(email: string, password: string): Promise<AuthResult> {
-  const sb = supabase();
+  const sb = await client();
   if (!sb) return { ok: false, error: "Contas não estão ativadas nesta versão." };
   const { data, error } = await sb.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: window.location.origin + "/perfil" } });
   if (error) return { ok: false, error: authError(error) };
@@ -171,14 +190,14 @@ export async function signUp(email: string, password: string): Promise<AuthResul
 }
 
 export async function signIn(email: string, password: string): Promise<AuthResult> {
-  const sb = supabase();
+  const sb = await client();
   if (!sb) return { ok: false, error: "Contas não estão ativadas nesta versão." };
   const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
   return error ? { ok: false, error: authError(error) } : { ok: true };
 }
 
 export async function resetPassword(email: string): Promise<AuthResult> {
-  const sb = supabase();
+  const sb = await client();
   if (!sb) return { ok: false, error: "Contas não estão ativadas nesta versão." };
   const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + "/perfil" });
   return error ? { ok: false, error: authError(error) } : { ok: true };

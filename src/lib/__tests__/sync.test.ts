@@ -187,3 +187,24 @@ describe("merge: propriedades (2000 casos aleatórios com muitos empates)", () =
       }
     }));
 });
+
+import { parseBackup } from "../sync";
+describe("parseBackup", () => {
+  it("aceita o formato exportado e ignora campos extras", () => {
+    const lib = { items: {}, entries: { a: { itemId: "a", status: "concluido", at: 1 } }, dismissed: [], goal: 50, lists: {}, perfil: { nome: "x" } };
+    const r = parseBackup(JSON.stringify(lib));
+    expect(r.ok && Object.keys(r.lib.entries)).toEqual(["a"]);
+    expect(r.ok && "perfil" in r.lib).toBe(false);
+  });
+  it("recusa lixo, JSON inválido e arquivo enorme", () => {
+    expect(parseBackup("{nao e json").ok).toBe(false);
+    expect(parseBackup("[]").ok).toBe(false);
+    expect(parseBackup('{"foo":1}').ok).toBe(false);
+    expect(parseBackup("null").ok).toBe(false);
+    expect(parseBackup(" ".repeat(9 * 1024 * 1024)).ok).toBe(false);
+  });
+  it("descarta registros com formato errado em vez de quebrar", () => {
+    const r = parseBackup(JSON.stringify({ entries: { a: { itemId: "outro", status: "concluido" }, b: null, c: { itemId: "c", status: "quero", at: 2 } } }));
+    expect(r.ok && Object.keys(r.lib.entries)).toEqual(["c"]);
+  });
+});

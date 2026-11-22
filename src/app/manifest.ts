@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Hobby",
     short_name: "Hobby",
     description: "Todos os seus hobbies em um perfil. A próxima descoberta vem de qualquer mídia.",
-    start_url: "/",
+    start_url: "/inicio",
     display: "standalone",
     background_color: "#f4efe6",
     theme_color: "#f4efe6",

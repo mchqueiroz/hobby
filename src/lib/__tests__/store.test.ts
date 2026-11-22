@@ -23,7 +23,7 @@ beforeEach(async () => {
 const imp = (titles: [number, string][]): Imported => ({
   items: titles.map(([n, t]) => ({ id: `anilist:${n}`, title: t, media: "anime" as const, vibes: ["psicológico"], source: "anilist" as const })),
   entries: titles.map(([n]) => ({ itemId: `anilist:${n}`, status: "concluido" as const, rating: 4, at: 123 })),
-  counts: { quero: 0, andamento: 0, concluido: titles.length, abandonei: 0 },
+  counts: { quero: 0, andamento: 0, concluido: titles.length, abandonei: 0, pausei: 0 },
   withoutVibes: 0,
 });
 
@@ -244,5 +244,127 @@ describe("resenha ao registrar", () => {
     expect(read().entries[hades.id].review).toHaveLength(store.MAX_REVIEW);
     store.undoLast();
     expect(read().entries[hades.id]).toMatchObject({ rating: 3, review: "primeira" });
+  });
+});
+
+import { entryProgress } from "../types";
+describe("progresso com total, +1 e rever", () => {
+  const item = SEED_BY_ID["seed:anime:cowboy-bebop"];
+  const E = () => store.getLibrary().entries[item.id];
+
+  it("+1 sai de 'quero', vira 'andamento' e conta", () => {
+    store.saveEntry(item, "quero");
+    expect(store.stepProgress(item.id)).toMatchObject({ ok: true, completed: false, value: 1 });
+    expect(E()).toMatchObject({ status: "andamento", progress: 1 });
+  });
+  it("chegar no total conclui, com data de hoje, e não passa do total", () => {
+    store.saveEntry(item, "andamento");
+    store.setNote(item.id, { total: 3, progress: 2 });
+    const r = store.stepProgress(item.id);
+    expect(r).toMatchObject({ completed: true, value: 3 });
+    expect(E().status).toBe("concluido");
+    expect(E().date).toBeGreaterThan(0);
+    expect(store.stepProgress(item.id).ok).toBe(false); // já concluído: não mexe
+    expect(E().progress).toBe(3);
+  });
+  it("não conclui sozinho sem total, e recuar não conclui nem fica negativo", () => {
+    store.saveEntry(item, "andamento");
+    store.stepProgress(item.id, 10);
+    expect(E().status).toBe("andamento");
+    store.stepProgress(item.id, -100);
+    expect(E().progress).toBeUndefined();
+    expect(E().status).toBe("andamento");
+  });
+  it("desfazer volta ao estado anterior", () => {
+    store.saveEntry(item, "andamento");
+    store.setNote(item.id, { total: 2, progress: 1 });
+    store.stepProgress(item.id);
+    expect(E().status).toBe("concluido");
+    store.undoLast();
+    expect(E()).toMatchObject({ status: "andamento", progress: 1 });
+  });
+  it("total inválido é ignorado e limitado", () => {
+    store.saveEntry(item, "andamento");
+    store.setNote(item.id, { total: -5 });
+    expect(E().total).toBeUndefined();
+    store.setNote(item.id, { total: 9_999_999 });
+    expect(E().total).toBe(99999);
+    store.setNote(item.id, { total: null });
+    expect(E().total).toBeUndefined();
+  });
+  it("refazer o registro mantém total e vezes", () => {
+    store.saveEntry(item, "concluido", 4);
+    store.setNote(item.id, { total: 26 });
+    store.redo(item.id);
+    store.saveEntry(item, "concluido", 5);
+    expect(E()).toMatchObject({ total: 26, rounds: 2, rating: 5 });
+  });
+  it("rever soma uma vez, atualiza a data e só vale para concluídos", () => {
+    store.saveEntry(item, "andamento");
+    expect(store.redo(item.id)).toBeNull();
+    store.saveEntry(item, "concluido", 5);
+    expect(store.redo(item.id)).toBe(2);
+    expect(store.redo(item.id)).toBe(3);
+    expect(E().rounds).toBe(3);
+    store.undoLast();
+    expect(E().rounds).toBe(2);
+  });
+  it("entryProgress calcula porcentagem e ignora lixo", () => {
+    expect(entryProgress({ progress: 12, total: 24 })).toEqual({ value: 12, total: 24, pct: 50 });
+    expect(entryProgress({ progress: 30, total: 24 })?.pct).toBe(100);
+    expect(entryProgress({ progress: 5 })).toEqual({ value: 5, total: undefined, pct: undefined });
+    expect(entryProgress({})).toBeNull();
+    expect(entryProgress({ progress: NaN, total: -1 } as never)).toBeNull();
+  });
+});
+
+import { cleanTags } from "../types";
+describe("etiquetas", () => {
+  const item = SEED_BY_ID["seed:anime:cowboy-bebop"];
+  it("cleanTags normaliza, deduplica e limita", () => {
+    expect(cleanTags(["  Reconfortante ", "reconfortante", "", 5, "Para VER  com a Ana"])).toEqual(["reconfortante", "para ver com a ana"]);
+    expect(cleanTags(Array.from({ length: 20 }, (_, i) => `t${i}`))).toHaveLength(8);
+    expect(cleanTags("x")).toEqual([]);
+    expect(cleanTags(["a".repeat(40)])[0]).toHaveLength(24);
+  });
+  it("setTags grava e limpa, e refazer o registro mantém", () => {
+    store.saveEntry(item, "concluido", 5);
+    store.setTags(item.id, ["Clássico", "clássico", "noir"]);
+    expect(store.getLibrary().entries[item.id].tags).toEqual(["clássico", "noir"]);
+    store.saveEntry(item, "concluido", 4);
+    expect(store.getLibrary().entries[item.id].tags).toEqual(["clássico", "noir"]);
+    store.setTags(item.id, []);
+    expect(store.getLibrary().entries[item.id].tags).toBeUndefined();
+  });
+  it("setTags ignora item sem registro", () => {
+    store.setTags("nao-existe", ["x"]);
+    expect(store.getLibrary().entries["nao-existe"]).toBeUndefined();
+  });
+});
+
+describe("ordenar lista", () => {
+  const a = SEED_BY_ID["seed:anime:cowboy-bebop"], b = SEED_BY_ID["seed:anime:death-note"], c = SEED_BY_ID["seed:jogo:hades"];
+  it("sobe, desce e respeita as pontas", () => {
+    const id = store.createList("Top")!;
+    store.toggleInList(id, a); store.toggleInList(id, b); store.toggleInList(id, c);
+    const ids = () => store.getLibrary().lists[id].itemIds;
+    expect(ids()).toEqual([a.id, b.id, c.id]);
+    expect(store.moveInList(id, c.id, -1)).toBe(1);
+    expect(ids()).toEqual([a.id, c.id, b.id]);
+    expect(store.moveInList(id, a.id, -1)).toBeNull();
+    expect(store.moveInList(id, b.id, 1)).toBeNull();
+    expect(store.moveInList(id, "x", 1)).toBeNull();
+    expect(store.moveInList("nada", a.id, 1)).toBeNull();
+    expect(ids()).toEqual([a.id, c.id, b.id]);
+  });
+});
+
+describe("status pausei", () => {
+  it("entra no rótulo e na contagem sem influenciar o gosto sem nota", async () => {
+    const { STATUS_LABEL } = await import("../types");
+    const { entryWeight } = await import("../recommend");
+    expect(STATUS_LABEL.pausei).toBe("Pausei");
+    expect(entryWeight({ itemId: "x", status: "pausei", at: 1 } as never)).toBe(0);
+    expect(entryWeight({ itemId: "x", status: "pausei", rating: 5, at: 1 } as never)).toBe(2);
   });
 });

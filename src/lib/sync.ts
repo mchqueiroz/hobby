@@ -152,3 +152,23 @@ export function parseRemote(data: unknown): Library {
   if (Object.keys(ts).length) out.ts = ts;
   return out;
 }
+
+/**
+ * Lê um arquivo de backup ("Exportar meus dados") sem confiar nele. Devolve a biblioteca limpa ou o motivo da recusa.
+ * Só aceita JSON com cara de biblioteca (precisa ter `entries` ou `lists`), para não "restaurar" um arquivo qualquer.
+ */
+export const MAX_BACKUP_BYTES = 8 * 1024 * 1024;
+export function parseBackup(text: string): { ok: true; lib: Library } | { ok: false; error: string } {
+  if (text.length > MAX_BACKUP_BYTES) return { ok: false, error: "Arquivo grande demais para ser um backup do Hobby." };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { ok: false, error: "Esse arquivo não é um JSON válido." };
+  }
+  const o = raw as Record<string, unknown> | null;
+  if (!o || typeof o !== "object" || Array.isArray(o) || (typeof o.entries !== "object" && typeof o.lists !== "object")) {
+    return { ok: false, error: "Esse arquivo não parece um backup do Hobby (exportado em Perfil > Seus dados)." };
+  }
+  return { ok: true, lib: parseRemote({ lib: o }) };
+}

@@ -153,6 +153,7 @@ export function userSignals(history: Interaction[], now: number, p: Params): Sig
   for (const h of history) {
     let s: number;
     if (h.status === "quero") continue;
+    if (h.status === "pausei" && h.rating === undefined) continue;
     if (h.status === "dismissed") s = p.negDismiss;
     else if (h.status === "abandonei") s = p.negAbandon;
     else if (h.rating !== undefined && !p.userNorm) s = Math.max(-2.5, Math.min(2.5, h.rating - 3));
@@ -169,6 +170,13 @@ export interface Scored {
   score: number;
   /** sinal do histórico que mais puxou este candidato (para explicar) */
   anchor?: Signal;
+  /** os dois que mais puxaram (com a força de cada um), o primeiro igual a `anchor` */
+  anchors?: Pulled[];
+}
+
+export interface Pulled {
+  g: Signal;
+  pts: number;
 }
 
 /** Pontua todos os candidatos. Maior é melhor. */
@@ -223,7 +231,7 @@ export function scoreAll(
 
     let knn = 0;
     let anchor: Signal | undefined;
-    let best = -Infinity;
+    const pulled: Pulled[] = [];
     if (kw > 0) {
       const sims: { g: Signal; sim: number }[] = [];
       for (const g of sig) {
@@ -237,13 +245,11 @@ export function scoreAll(
         const k = g.w * Math.pow(sim, p.knnPower);
         nn += k * g.s;
         dd += k;
-        const pts = k * g.s;
-        if (g.s > 0 && pts > best) {
-          best = pts;
-          anchor = g;
-        }
+        if (g.s > 0) pulled.push({ g, pts: k * g.s });
       }
       knn = nn / (dd + p.knnShrink);
+      pulled.sort((a, b) => b.pts - a.pts);
+      anchor = pulled[0]?.g;
     }
 
     let score = (1 - kw) * add + kw * knn;
@@ -253,7 +259,7 @@ export function scoreAll(
     } else if (p.media === "fixed" && home && c.media !== home) {
       score += p.crossBonus;
     }
-    return { score: score + pr(ci), anchor };
+    return { score: score + pr(ci), anchor, anchors: pulled.slice(0, 2) };
   });
 }
 

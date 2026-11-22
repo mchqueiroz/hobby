@@ -128,7 +128,7 @@ export function parseLetterboxd(files: { name: string; text: string }[]): { film
 export function buildFilmImport(films: Film[], found: (Item | null)[], now = Date.now()): Imported & { missing: number } {
   const items: Item[] = [];
   const entries: Entry[] = [];
-  const counts: Record<Status, number> = { quero: 0, andamento: 0, concluido: 0, abandonei: 0 };
+  const counts: Record<Status, number> = { quero: 0, andamento: 0, concluido: 0, abandonei: 0, pausei: 0 };
   const seen = new Set<string>();
   let withoutVibes = 0;
   let missing = 0;

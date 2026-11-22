@@ -54,9 +54,9 @@ describe("importação do AniList", () => {
     expect(by["anilist:3"]).toMatchObject({ status: "andamento", rating: undefined });
     expect(by["anilist:4"].status).toBe("quero");
     expect(by["anilist:5"]).toMatchObject({ status: "abandonei", rating: 1.5 });
-    expect(by["anilist:6"].status).toBe("andamento");
+    expect(by["anilist:6"].status).toBe("pausei");
     expect(by["anilist:7"].rating).toBe(0.5);
-    expect(out.counts).toEqual({ concluido: 3, andamento: 2, quero: 1, abandonei: 1 });
+    expect(out.counts).toEqual({ concluido: 3, andamento: 1, quero: 1, abandonei: 1, pausei: 1 });
   });
 
   it("conta uma vez só a obra que aparece em mais de uma lista", () => {

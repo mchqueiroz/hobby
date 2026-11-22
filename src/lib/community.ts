@@ -1,12 +1,12 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { supabase } from "./supabase";
+import { loadSupabase } from "./supabase";
 import { makeThumb } from "./image";
 import { readProfile } from "./profile";
 import { getLibrary } from "./store";
-import { buildStats, checkComment, countByThread, desiredActivity, diffActivity, handleError, MAX_BIO, normalizeHandle, parseActivity, parseComment, parseStats, type ActivityRow, type CommentRow, type PublicStats } from "./social";
-import { MEDIAS, type Media } from "./types";
+import { buildStats, checkComment, countByThread, desiredActivity, diffActivity, handleError, MAX_BIO, normalizeHandle, parseActivity, parseComment, parseStats, rankTasteMatches, threadKey, type ActivityRow, type CommentRow, type PublicStats } from "./social";
+import { MEDIAS, type Library, type Media } from "./types";
 
 /**
  * Parte social: perfil público, seguir, feed. Tudo passa pelas regras (RLS) do banco, que é quem de fato protege:
@@ -100,7 +100,7 @@ const LIST_COLS = "id,handle,name,color,avatar_thumb,stats";
 /* ------------------------------ meu perfil público ------------------------------ */
 
 export async function loadMine(userId: string): Promise<MySocial | null> {
-  const sb = supabase();
+  const sb = await loadSupabase();
   if (!sb) return null;
   const { data } = await sb.from("profiles").select("handle,bio,is_public,share_reviews").eq("id", userId).maybeSingle();
   const v = data ? { handle: data.handle as string, bio: (data.bio as string) ?? "", is_public: !!data.is_public, share_reviews: !!data.share_reviews } : null;
@@ -109,7 +109,7 @@ export async function loadMine(userId: string): Promise<MySocial | null> {
 }
 
 export async function saveMine(userId: string, s: MySocial): Promise<{ ok: true } | { ok: false; error: string }> {
-  const sb = supabase();
+  const sb = await loadSupabase();
   if (!sb) return { ok: false, error: "Contas não estão ativadas nesta versão." };
   const handle = normalizeHandle(s.handle);
   const bad = handleError(handle);
@@ -146,7 +146,7 @@ export async function saveMine(userId: string, s: MySocial): Promise<{ ok: true 
 let lastStats = "";
 /** Mantém a atividade publicada igual à biblioteca. Só roda para perfil público; envia só as diferenças. */
 export async function reconcileActivity(userId: string, force = false): Promise<void> {
-  const sb = supabase();
+  const sb = await loadSupabase();
   const me = readCache();
   if (!sb || !me?.is_public) return;
   const lib = getLibrary();
@@ -176,39 +176,40 @@ export async function reconcileActivity(userId: string, force = false): Promise<
 
 const clean = (q: string) => q.replace(/[%,()*\\_:"']/g, " ").trim().slice(0, 30);
 
-export async function searchPeople(q: string): Promise<PublicProfile[]> {
-  const sb = supabase();
+export async function searchPeople(q: string, exclude: string[] = []): Promise<PublicProfile[]> {
+  const sb = await loadSupabase();
   const t = clean(q);
   if (!sb || t.length < 2) return [];
   const { data, error } = await sb.from("profiles").select(LIST_COLS).or(`handle.ilike.%${t}%,name.ilike.%${t}%`).eq("is_public", true).limit(20);
   if (error) throw error;
-  return (data ?? []).map((r) => toProfile(r));
+  const hide = new Set(exclude);
+  return (data ?? []).map((r) => toProfile(r)).filter((p) => !hide.has(p.id));
 }
 
 export async function follow(me: string, other: string) {
-  const { error } = await supabase()!.from("follows").upsert({ follower_id: me, followee_id: other }, { onConflict: "follower_id,followee_id", ignoreDuplicates: true });
+  const { error } = await (await loadSupabase())!.from("follows").upsert({ follower_id: me, followee_id: other }, { onConflict: "follower_id,followee_id", ignoreDuplicates: true });
   if (error) throw error;
 }
 export async function unfollow(me: string, other: string) {
-  const { error } = await supabase()!.from("follows").delete().eq("follower_id", me).eq("followee_id", other);
+  const { error } = await (await loadSupabase())!.from("follows").delete().eq("follower_id", me).eq("followee_id", other);
   if (error) throw error;
 }
 export async function followingIds(me: string): Promise<string[]> {
-  const { data, error } = await supabase()!.from("follows").select("followee_id").eq("follower_id", me).limit(500);
+  const { data, error } = await (await loadSupabase())!.from("follows").select("followee_id").eq("follower_id", me).limit(500);
   if (error) throw error;
   return (data ?? []).map((r) => r.followee_id as string);
 }
 export async function listFollowing(me: string): Promise<PublicProfile[]> {
   const ids = await followingIds(me);
   if (!ids.length) return [];
-  const { data, error } = await supabase()!.from("profiles").select(LIST_COLS).in("id", ids).eq("is_public", true);
+  const { data, error } = await (await loadSupabase())!.from("profiles").select(LIST_COLS).in("id", ids).eq("is_public", true);
   if (error) throw error;
   return (data ?? []).map((r) => toProfile(r));
 }
 
 /** Atividade recente de quem a pessoa segue, mais nova primeiro. */
 export async function loadFeed(me: string, limit = 40): Promise<FeedItem[]> {
-  const sb = supabase()!;
+  const sb = (await loadSupabase())!;
   const people = await listFollowing(me);
   if (!people.length) return [];
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -226,7 +227,7 @@ export async function loadFeed(me: string, limit = 40): Promise<FeedItem[]> {
 /* ------------------------------ página pública ------------------------------ */
 
 export async function loadPublic(handle: string): Promise<{ profile: PublicProfile; activity: ActivityRow[]; at: string[] } | null> {
-  const sb = supabase();
+  const sb = await loadSupabase();
   const h = normalizeHandle(handle);
   if (!sb || handleError(h)) return null;
   const { data, error } = await sb.from("profiles").select("id,handle,name,bio,color,avatar,avatar_thumb,banner,stats").eq("handle", h).maybeSingle();
@@ -259,7 +260,7 @@ const tooMany = (e: { code?: string; message?: string }) => (e.code === "54000" 
 async function profilesById(ids: string[]): Promise<Map<string, PublicProfile>> {
   const uniq = [...new Set(ids)];
   if (!uniq.length) return new Map();
-  const { data, error } = await supabase()!.from("profiles").select(LIST_COLS).in("id", uniq);
+  const { data, error } = await (await loadSupabase())!.from("profiles").select(LIST_COLS).in("id", uniq);
   if (error) throw error;
   return new Map((data ?? []).map((r) => toProfile(r)).map((p) => [p.id, p]));
 }
@@ -267,23 +268,31 @@ const brief = (p: PublicProfile | undefined) => (p ? { id: p.id, handle: p.handl
 
 /** Comentários de uma atividade, do mais antigo ao mais novo (leitura de conversa). */
 export async function loadComments(t: ThreadRef): Promise<CommentView[]> {
-  const { data, error } = await supabase()!.from("comments").select("id,author_id,target_user,target_item,body,created_at").eq("target_user", t.user).eq("target_item", t.item).order("created_at", { ascending: true }).limit(200);
+  const { data, error } = await (await loadSupabase())!.from("comments").select("id,author_id,target_user,target_item,body,created_at,parent_id,edited_at").eq("target_user", t.user).eq("target_item", t.item).order("created_at", { ascending: true }).limit(200);
   if (error) throw error;
   const rows = (data ?? []).map(parseComment).filter((c): c is CommentRow => !!c);
   const people = await profilesById(rows.map((r) => r.author_id));
   return rows.map((r) => ({ ...r, author: brief(people.get(r.author_id)) }));
 }
 
-export async function addComment(me: string, t: ThreadRef, raw: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function addComment(me: string, t: ThreadRef, raw: string, parentId?: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const c = checkComment(raw);
   if (!c.ok) return c;
-  const { error } = await supabase()!.from("comments").insert({ author_id: me, target_user: t.user, target_item: t.item, body: c.body });
+  const { error } = await (await loadSupabase())!.from("comments").insert({ author_id: me, target_user: t.user, target_item: t.item, body: c.body, ...(parentId ? { parent_id: parentId } : {}) });
   if (error) return { ok: false, error: error.code === "42501" ? "Para comentar, seu perfil precisa estar público (em Comunidade) e o da pessoa também." : tooMany(error) };
   return { ok: true };
 }
 
+export async function editComment(id: string, raw: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const c = checkComment(raw);
+  if (!c.ok) return c;
+  const { error } = await (await loadSupabase())!.from("comments").update({ body: c.body, edited_at: new Date().toISOString() }).eq("id", id);
+  if (error) return { ok: false, error: error.code === "42501" ? "Só o autor pode editar o comentário." : errText(error) };
+  return { ok: true };
+}
+
 export async function removeComment(id: string): Promise<void> {
-  const { error } = await supabase()!.from("comments").delete().eq("id", id);
+  const { error } = await (await loadSupabase())!.from("comments").delete().eq("id", id);
   if (error) throw error;
 }
 
@@ -291,14 +300,23 @@ export async function removeComment(id: string): Promise<void> {
 export async function commentCounts(targets: ThreadRef[]): Promise<Map<string, number>> {
   const users = [...new Set(targets.map((t) => t.user))];
   if (!users.length) return new Map();
-  const { data, error } = await supabase()!.from("comments").select("target_user,target_item").in("target_user", users).limit(2000);
+  const { data, error } = await (await loadSupabase())!.from("comments").select("target_user,target_item").in("target_user", users).limit(2000);
   if (error) throw error;
   return countByThread((data ?? []).map((r) => ({ target_user: String(r.target_user), target_item: String(r.target_item) })));
 }
 
+/** Quem começou a te seguir, mais recente primeiro. */
+export async function recentFollowers(me: string, limit = 20): Promise<{ profile: PublicProfile; at: string }[]> {
+  const { data, error } = await (await loadSupabase())!.from("follows").select("follower_id,created_at").eq("followee_id", me).order("created_at", { ascending: false }).limit(limit);
+  if (error) throw error;
+  const rows = (data ?? []).map((r) => ({ id: String(r.follower_id), at: String(r.created_at) }));
+  const people = await profilesById(rows.map((r) => r.id));
+  return rows.flatMap((r) => { const p = people.get(r.id); return p ? [{ profile: p, at: r.at }] : []; });
+}
+
 /** Comentários mais recentes que as pessoas deixaram no seu perfil. */
 export async function recentOnMine(me: string, limit = 15): Promise<(CommentView & { title: string })[]> {
-  const sb = supabase()!;
+  const sb = (await loadSupabase())!;
   const { data, error } = await sb.from("comments").select("id,author_id,target_user,target_item,body,created_at").eq("target_user", me).order("created_at", { ascending: false }).limit(limit);
   if (error) throw error;
   const rows = (data ?? []).map(parseComment).filter((c): c is CommentRow => !!c).filter((c) => c.author_id !== me);
@@ -311,6 +329,21 @@ export async function recentOnMine(me: string, limit = 15): Promise<(CommentView
   return rows.map((r) => ({ ...r, author: brief(people.get(r.author_id)), title: titles.get(r.target_item) ?? r.target_item }));
 }
 
+/** Curtidas mais recentes nos seus registros (de quem não está bloqueado: o banco já filtra). */
+export async function recentLikesOnMine(me: string, limit = 15): Promise<{ who: PublicProfile | undefined; title: string; at: string }[]> {
+  const sb = (await loadSupabase())!;
+  const { data, error } = await sb.from("likes").select("user_id,target_item,created_at").eq("target_user", me).order("created_at", { ascending: false }).limit(limit);
+  if (error) throw error;
+  const rows = (data ?? []).map((r) => ({ user: String(r.user_id), item: String(r.target_item), at: String(r.created_at) })).filter((r) => r.user !== me);
+  if (!rows.length) return [];
+  const [people, act] = await Promise.all([
+    profilesById(rows.map((r) => r.user)),
+    sb.from("activity").select("item_id,item").eq("user_id", me).in("item_id", [...new Set(rows.map((r) => r.item))]),
+  ]);
+  const titles = new Map((act.data ?? []).map((a) => [String(a.item_id), String((a.item as { title?: string } | null)?.title ?? a.item_id)]));
+  return rows.map((r) => ({ who: people.get(r.user), title: titles.get(r.item) ?? r.item, at: r.at }));
+}
+
 export interface CommunityReview {
   user: NonNullable<CommentView["author"]>;
   row: ActivityRow;
@@ -319,7 +352,7 @@ export interface CommunityReview {
 }
 /** Resenhas públicas de uma obra, de todo mundo que liberou resenha. */
 export async function loadItemReviews(itemId: string, limit = 20): Promise<CommunityReview[]> {
-  const sb = supabase();
+  const sb = await loadSupabase();
   if (!sb) return [];
   const { data, error } = await sb.from("activity").select("user_id,item_id,item,status,rating,review,updated_at").eq("item_id", itemId).not("review", "is", null).order("updated_at", { ascending: false }).limit(limit);
   if (error) throw error;
@@ -331,4 +364,94 @@ export async function loadItemReviews(itemId: string, limit = 20): Promise<Commu
     if (row && u && row.review) out.push({ user: u, row, userId: String(r.user_id), at: String(r.updated_at) });
   }
   return out;
+}
+
+
+/* ------------------------------ moderação ------------------------------ */
+
+export type ReportReason = "spam" | "ofensivo" | "outro";
+export const REPORT_LABEL: Record<ReportReason, string> = { spam: "Spam ou propaganda", ofensivo: "Ofensivo ou assédio", outro: "Outro motivo" };
+
+/** Denuncia um comentário. Três denúncias de pessoas diferentes escondem o comentário (regra do banco). */
+export async function reportComment(me: string, commentId: string, reason: ReportReason): Promise<{ ok: true; already?: boolean } | { ok: false; error: string }> {
+  const { error } = await (await loadSupabase())!.from("reports").insert({ reporter: me, comment_id: commentId, reason });
+  if (!error) return { ok: true };
+  if (error.code === "23505") return { ok: true, already: true };
+  if (error.code === "54000") return { ok: false, error: "Você fez muitas denúncias em pouco tempo. Tente de novo mais tarde." };
+  return { ok: false, error: "Não consegui enviar a denúncia agora." };
+}
+
+/** Bloqueia: some o conteúdo da pessoa para você, ela não segue nem comenta no seu perfil, e vocês deixam de se seguir. */
+export async function blockUser(userId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await (await loadSupabase())!.rpc("block_user", { p_user: userId });
+  return error ? { ok: false, error: "Não consegui bloquear agora." } : { ok: true };
+}
+export async function unblockUser(me: string, userId: string): Promise<void> {
+  const { error } = await (await loadSupabase())!.from("blocks").delete().eq("blocker", me).eq("blocked", userId);
+  if (error) throw error;
+}
+export async function blockedIds(me: string): Promise<string[]> {
+  const { data, error } = await (await loadSupabase())!.from("blocks").select("blocked").eq("blocker", me).limit(500);
+  if (error) throw error;
+  return (data ?? []).map((r) => r.blocked as string);
+}
+export async function listBlocked(me: string): Promise<{ id: string; profile: PublicProfile | null }[]> {
+  const ids = await blockedIds(me);
+  if (!ids.length) return [];
+  const people = await profilesById(ids);
+  return ids.map((id) => ({ id, profile: people.get(id) ?? null }));
+}
+
+/* ------------------------------ curtidas ------------------------------ */
+
+export interface LikeInfo { count: number; liked: boolean }
+
+/** Curtidas de cada atividade da lista e se a pessoa já curtiu (uma consulta só). */
+export async function likeInfo(me: string, targets: ThreadRef[]): Promise<Map<string, LikeInfo>> {
+  const users = [...new Set(targets.map((t) => t.user))];
+  const out = new Map<string, LikeInfo>();
+  if (!users.length) return out;
+  const { data, error } = await (await loadSupabase())!.from("likes").select("user_id,target_user,target_item").in("target_user", users).limit(5000);
+  if (error) throw error;
+  for (const r of data ?? []) {
+    const k = threadKey(String(r.target_user), String(r.target_item));
+    const cur = out.get(k) ?? { count: 0, liked: false };
+    cur.count++;
+    if (r.user_id === me) cur.liked = true;
+    out.set(k, cur);
+  }
+  return out;
+}
+
+export async function setLike(me: string, t: ThreadRef, on: boolean): Promise<{ ok: true } | { ok: false; error: string }> {
+  const sb = (await loadSupabase())!;
+  const { error } = on
+    ? await sb.from("likes").upsert({ user_id: me, target_user: t.user, target_item: t.item }, { onConflict: "user_id,target_user,target_item", ignoreDuplicates: true })
+    : await sb.from("likes").delete().eq("user_id", me).eq("target_user", t.user).eq("target_item", t.item);
+  if (!error) return { ok: true };
+  return { ok: false, error: error.code === "42501" ? "Para curtir, seu perfil precisa estar público (em Comunidade)." : "Não consegui curtir agora." };
+}
+
+/* ------------------------- pessoas com gosto parecido ------------------------- */
+
+export interface SuggestedPerson { profile: PublicProfile; shared: number; agree: number }
+
+/** Pessoas públicas que registraram as mesmas obras que você, ainda não seguidas nem bloqueadas. */
+export async function suggestPeople(me: string, lib: Library, limit = 5): Promise<SuggestedPerson[]> {
+  const sb = (await loadSupabase())!;
+  const mine = new Map<string, number | null>();
+  for (const e of Object.values(lib.entries)) {
+    if (e.status === "concluido" || e.status === "andamento") mine.set(e.itemId, e.rating ?? null);
+  }
+  const ids = [...mine.keys()].slice(0, 150);
+  if (ids.length < 2) return [];
+  const [following, blocked] = await Promise.all([followingIds(me), blockedIds(me)]);
+  const skip = new Set([me, ...following, ...blocked]);
+  const { data, error } = await sb.from("activity").select("user_id,item_id,rating").in("item_id", ids).in("status", ["concluido", "andamento"]).limit(3000);
+  if (error) throw error;
+  const rows = (data ?? []).filter((r) => !skip.has(String(r.user_id))).map((r) => ({ user_id: String(r.user_id), item_id: String(r.item_id), rating: typeof r.rating === "number" ? r.rating : null }));
+  const top = rankTasteMatches(mine, rows, { limit });
+  if (!top.length) return [];
+  const people = await profilesById(top.map((m) => m.userId));
+  return top.flatMap((m) => { const p = people.get(m.userId); return p ? [{ profile: p, shared: m.shared, agree: m.agree }] : []; });
 }

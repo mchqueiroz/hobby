@@ -5,7 +5,7 @@ import { useState } from "react";
 import { tonight, type Recommendation, type Source } from "@/lib/recommend";
 import { MOODS, type Mood } from "@/lib/vibes";
 import { cacheItem, saveEntry, track, undoLast, useLibrary } from "@/lib/store";
-import { MEDIAS, MEDIA_LABEL, type Item, type Media } from "@/lib/types";
+import { MEDIAS, MEDIA_LABEL, wantLabel, type Item, type Media } from "@/lib/types";
 import { Chips, Cover, MediaTag } from "./ui";
 import { useShell } from "./Shell";
 
@@ -46,7 +46,7 @@ export function Tonight({ pool }: { pool: Item[] }) {
     const status = source === "quero" ? "andamento" : "quero";
     saveEntry(r.item, status);
     track("tonight_accept", { source, cross: r.anchor ? r.anchor.item.media !== r.item.media : false });
-    toast(`${r.item.title}: ${status === "quero" ? "Quero ver" : "Em andamento"}`, () => { undoLast(); });
+    toast(`${r.item.title}: ${status === "quero" ? wantLabel(r.item.media) : "Em andamento"}`, () => { undoLast(); });
   }
 
   return (
@@ -80,7 +80,7 @@ export function Tonight({ pool }: { pool: Item[] }) {
             </div>
           </div>
           <button type="button" className="btn ghost small mt12" onClick={() => accept(res.pick!)}>
-            {source === "quero" ? "Vou começar agora" : "Quero ver"}
+            {source === "quero" ? "Vou começar agora" : wantLabel(res.pick.item.media)}
           </button>
           {res.others.length > 0 && (
             <p className="muted mt12" style={{ fontSize: 13 }}>

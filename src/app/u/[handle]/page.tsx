@@ -4,14 +4,18 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ActivityLine, AffinityBadge, PersonAvatar, statsLine } from "@/components/Social";
-import { Header } from "@/components/ui";
+import { Cover, Header } from "@/components/ui";
+import { buildPool } from "@/lib/search";
+import { jointVibes, recommend, topVibes } from "@/lib/recommend";
 import { cloudAvailable, useCloud } from "@/lib/cloud";
-import { commentCounts, follow, followingIds, loadPublic, unfollow } from "@/lib/community";
+import { blockedIds, blockUser, commentCounts, follow, likeInfo, type LikeInfo, followingIds, loadPublic, unblockUser, unfollow } from "@/lib/community";
 import { bannerStyle } from "@/components/ProfileImageEditor";
 import { bannerGradient, vibePalette } from "@/lib/palette";
 import { parseProfile } from "@/lib/profile";
 import { affinity, threadKey, type ActivityRow } from "@/lib/social";
-import { useHydrated, useLibrary } from "@/lib/store";
+import { cacheItem, saveEntry, undoLast, useHydrated, useLibrary } from "@/lib/store";
+import { useShell } from "@/components/Shell";
+import { wantLabel } from "@/lib/types";
 import { MEDIAS, MEDIA_PLURAL, type Media } from "@/lib/types";
 import type { PublicProfile } from "@/lib/community";
 
@@ -25,7 +29,11 @@ export default function PerfilPublico() {
   const [data, setData] = useState<Loaded | undefined>(undefined);
   const [follows, setFollows] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+  const [blocked, setBlocked] = useState<boolean | null>(null);
+  const [askBlock, setAskBlock] = useState(false);
+  const [followErr, setFollowErr] = useState<string | null>(null);
   const [counts, setCounts] = useState<Map<string, number>>(new Map());
+  const [likes, setLikes] = useState<Map<string, LikeInfo>>(new Map());
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -41,12 +49,20 @@ export default function PerfilPublico() {
     if (!target || !data || data === "erro") return;
     let live = true;
     commentCounts(data.activity.slice(0, 40).map((a) => ({ user: target, item: a.item_id }))).then((c) => live && setCounts(c)).catch(() => {});
+    if (me) likeInfo(me, data.activity.slice(0, 40).map((a) => ({ user: target, item: a.item_id }))).then((l) => live && setLikes(l)).catch(() => {});
     return () => { live = false; };
-  }, [target, data, tick]);
+  }, [target, data, tick, me]);
   useEffect(() => {
     if (!me || !target) return;
     let live = true;
     followingIds(me).then((ids) => live && setFollows(ids.includes(target))).catch(() => live && setFollows(null));
+    return () => { live = false; };
+  }, [me, target]);
+
+  useEffect(() => {
+    if (!me || !target) return;
+    let live = true;
+    blockedIds(me).then((ids) => live && setBlocked(ids.includes(target))).catch(() => live && setBlocked(null));
     return () => { live = false; };
   }, [me, target]);
 
@@ -83,15 +99,36 @@ export default function PerfilPublico() {
           {p.stats.topVibes.length > 0 && <div className="row gap8 mt12" style={{ flexWrap: "wrap" }}>{p.stats.topVibes.slice(0, 6).map((v) => <span key={v} className="tag dark">{v}</span>)}</div>}
           <div className="mt12">
             {isMe ? <Link href="/comunidade" className="btn ghost small" style={{ width: "auto" }}>Editar meu perfil público</Link>
-              : me ? (
+              : me && blocked ? (
+                <div className="row gap8" style={{ alignItems: "center", flexWrap: "wrap" }}>
+                  <span className="muted" style={{ fontSize: 14 }} data-testid="bloqueado">Você bloqueou esta pessoa.</span>
+                  <button type="button" className="btn ghost small" style={{ width: "auto" }} disabled={busy}
+                    onClick={async () => { setBusy(true); try { await unblockUser(me, p.id); setBlocked(false); } finally { setBusy(false); } }}>Desbloquear</button>
+                </div>
+              ) : me ? (
+                <div className="row gap8" style={{ alignItems: "center", flexWrap: "wrap" }}>
                 <button type="button" className={`btn small ${followsNow ? "ghost" : ""}`} style={{ width: "auto" }} disabled={busy || followsNow === null}
-                  onClick={async () => { setBusy(true); try { await (followsNow ? unfollow(me, p.id) : follow(me, p.id)); setFollows(!followsNow); } finally { setBusy(false); } }}>
+                  onClick={async () => { setBusy(true); setFollowErr(null); try { await (followsNow ? unfollow(me, p.id) : follow(me, p.id)); setFollows(!followsNow); } catch { setFollowErr(followsNow ? "Não consegui deixar de seguir agora." : "Não foi possível seguir esta pessoa agora."); } finally { setBusy(false); } }}>
                   {followsNow ? "Seguindo" : "Seguir"}
                 </button>
+                {!askBlock ? (
+                  <button type="button" className="chip" data-testid="bloquear" onClick={() => setAskBlock(true)}>Bloquear</button>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 13 }}>Bloquear {p.name}? Vocês deixam de se seguir e ela não comenta no seu perfil.</span>
+                    <button type="button" className="btn danger small" style={{ width: "auto" }} disabled={busy} data-testid="confirmar-bloqueio"
+                      onClick={async () => { setBusy(true); try { const r = await blockUser(p.id); if (r.ok) { setBlocked(true); setFollows(false); } } finally { setBusy(false); setAskBlock(false); } }}>Confirmar bloqueio</button>
+                    <button type="button" className="chip" onClick={() => setAskBlock(false)}>Cancelar</button>
+                  </>
+                )}
+                {followErr && <span role="status" data-testid="seguir-erro" style={{ fontSize: 13, color: "var(--danger)" }}>{followErr}</span>}
+                </div>
               ) : <Link href="/perfil" className="btn ghost small" style={{ width: "auto" }}>Entre para seguir</Link>}
           </div>
         </div>
       </div>
+
+      {!isMe && me && <Together lib={lib} theirs={p.stats.topVibes} name={p.name} />}
 
       {!isMe && me && (
         <div className="card mt16"><AffinityBadge a={aff} />
@@ -104,10 +141,46 @@ export default function PerfilPublico() {
       <p className="label">Registros recentes</p>
       {activity.length === 0 ? <p className="card" style={{ fontSize: 14 }}>Nada publicado ainda.</p> : (
         <ul className="stack gap8" data-testid="atividade">
-          {activity.slice(0, 40).map((r, i) => <ActivityLine key={r.item_id} r={r} when={at[i]} thread={{ user: p.id, item: r.item_id }} count={counts.get(threadKey(p.id, r.item_id)) ?? 0} onThreadChange={() => setTick((t) => t + 1)} />)}
+          {activity.slice(0, 40).map((r, i) => <ActivityLine key={r.item_id} r={r} when={at[i]} thread={{ user: p.id, item: r.item_id }} count={counts.get(threadKey(p.id, r.item_id)) ?? 0} onThreadChange={() => setTick((t) => t + 1)} like={me ? { me, info: likes.get(threadKey(p.id, r.item_id)) } : undefined} />)}
         </ul>
       )}
       <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>{MEDIAS.map((m) => `${MEDIA_PLURAL[m]}: ${p.stats.perMedia[m]}`).join(" · ")}</p>
     </>
+  );
+}
+
+/** Sugestões para os dois, a partir das vibes de cada um (só vibes públicas: nada de títulos do outro). */
+function Together({ lib, theirs, name }: { lib: ReturnType<typeof useLibrary>; theirs: string[]; name: string }) {
+  const { toast } = useShell();
+  const [open, setOpen] = useState(false);
+  const { vibes, shared } = jointVibes(topVibes(lib, 8), theirs);
+  const recs = open && vibes.length ? recommend(lib, { pool: buildPool([]), moodVibes: vibes, count: 4, perMedia: 2 }) : [];
+  return (
+    <section className="card mt16" data-testid="juntos">
+      <div className="row between" style={{ alignItems: "center" }}>
+        <strong style={{ fontSize: 15 }}>Ver algo juntos</strong>
+        <button type="button" className="btn ghost small" style={{ width: "auto" }} aria-expanded={open} onClick={() => setOpen((o) => !o)}>{open ? "Fechar" : "Sugerir"}</button>
+      </div>
+      {open && (vibes.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13, marginTop: 8 }}>Ainda faltam dados de gosto para sugerir. Avalie mais itens e peça de novo.</p>
+      ) : (
+        <>
+          <p className="muted" style={{ fontSize: 13, margin: "6px 0 10px" }}>
+            {shared.length ? `Vocês dois curtem ${shared.join(", ")}.` : `Vocês têm gostos diferentes, então misturei as vibes de cada um.`} Sugestões para você e {name}:
+          </p>
+          <ul className="stack gap8" style={{ listStyle: "none", padding: 0 }} data-testid="juntos-lista">
+            {recs.map((r) => (
+              <li key={r.item.id} className="row" style={{ gap: 10, alignItems: "center" }}>
+                <Link href={`/item/${encodeURIComponent(r.item.id)}`} onClick={() => cacheItem(r.item)} aria-hidden="true" tabIndex={-1}><Cover item={r.item} w={40} h={56} fs={9} /></Link>
+                <Link href={`/item/${encodeURIComponent(r.item.id)}`} onClick={() => cacheItem(r.item)} style={{ flex: 1, fontWeight: 600, fontSize: 14 }}>{r.item.title}</Link>
+                <button type="button" className="btn ghost small" style={{ width: "auto" }} aria-label={`${wantLabel(r.item.media)}: ${r.item.title}`}
+                  onClick={() => { saveEntry(r.item, "quero"); toast(`${r.item.title}: ${wantLabel(r.item.media)}`, undoLast); }}>{wantLabel(r.item.media)}</button>
+              </li>
+            ))}
+            {recs.length === 0 && <li className="muted" style={{ fontSize: 13 }}>Nada novo no catálogo com essas vibes.</li>}
+          </ul>
+        </>
+      ))}
+    </section>
   );
 }

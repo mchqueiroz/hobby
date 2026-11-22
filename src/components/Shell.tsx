@@ -1,10 +1,14 @@
 "use client";
 
+import { useCloud } from "@/lib/cloud";
+import { useNovidades } from "@/lib/novidades";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Item } from "@/lib/types";
 import { bootCloud } from "@/lib/cloud";
+import { installErrorReporting } from "@/lib/errorReport";
+import { useStorageProblem, watchOtherTabs } from "@/lib/store";
 import { RegisterSheet } from "./RegisterSheet";
 
 interface Ctx {
@@ -14,11 +18,14 @@ interface Ctx {
 const ShellCtx = createContext<Ctx>({ openRegister: () => {}, toast: () => {} });
 export const useShell = () => useContext(ShellCtx);
 
-const BARE = ["/importar", "/favoritos"];
-const LIB_PATHS = ["/biblioteca", "/diario", "/listas", "/estatisticas"];
+const BARE = ["/", "/importar", "/favoritos", "/privacidade", "/termos"];
+const LIB_PATHS = ["/biblioteca", "/diario", "/lancamentos", "/listas", "/estatisticas", "/retrospectiva"];
+const SOCIAL_PATHS = ["/comunidade", "/u/"];
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  const cloud = useCloud();
+  const novidades = useNovidades(cloud.userId);
   const router = useRouter();
   const bare = BARE.includes(path);
   const [sheet, setSheet] = useState<{ n: number; item?: Item } | null>(null);
@@ -32,7 +39,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
     timer.current = setTimeout(() => setToast(null), 6000);
   }, []);
   useEffect(() => () => clearTimeout(timer.current), []);
-  useEffect(() => { bootCloud(); }, []);
+  useEffect(() => { bootCloud(); watchOtherTabs(); installErrorReporting(); }, []);
+  const storageProblem = useStorageProblem();
+  // uso offline: só em produção (em desenvolvimento o cache atrapalharia o recarregamento ao vivo)
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, []);
 
   // "/" abre a busca em qualquer tela, menos quando a pessoa está digitando
   useEffect(() => {
@@ -56,12 +68,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
       {!bare && (
         <div className="tabbar">
           <nav aria-label="Principal">
+            <Link href="/inicio" aria-current={path.startsWith("/inicio") ? "page" : undefined}>Início</Link>
             <Link href="/biblioteca" aria-current={LIB_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}>Biblioteca</Link>
-            <Link href="/descobrir" aria-current={path.startsWith("/descobrir") ? "page" : undefined}>Descobrir</Link>
             <button type="button" className="plus" aria-label="Registrar um item" onClick={() => openRegister()}>+</button>
-            <Link href="/buscar" aria-current={path.startsWith("/buscar") ? "page" : undefined}>Buscar</Link>
+            <Link href="/descobrir" aria-current={path.startsWith("/descobrir") ? "page" : undefined}>Descobrir</Link>
+            <Link href="/comunidade" aria-current={SOCIAL_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}>Social{novidades > 0 && <><span className="dot" aria-hidden="true" /><span className="sr"> ({novidades} {novidades === 1 ? "novidade" : "novidades"})</span></>}</Link>
             <Link href="/perfil" aria-current={path.startsWith("/perfil") ? "page" : undefined}>Perfil</Link>
           </nav>
+        </div>
+      )}
+      {storageProblem && (
+        <div role="alert" data-testid="aviso-armazenamento" className="card" style={{ position: "fixed", left: 12, right: 12, top: 12, zIndex: 60, borderColor: "var(--danger)" }}>
+          <strong style={{ fontSize: 14 }}>Não consegui salvar neste aparelho</strong>
+          <p style={{ fontSize: 13, marginTop: 4 }}>O armazenamento do navegador está cheio ou bloqueado. O que você registrar agora pode se perder ao fechar o app. Libere espaço, ou <Link href="/perfil" style={{ textDecoration: "underline" }}>exporte seus dados no Perfil</Link>.</p>
         </div>
       )}
       {sheet && <RegisterSheet key={`sheet-${sheet.n}`} initial={sheet.item} onClose={() => setSheet(null)} />}

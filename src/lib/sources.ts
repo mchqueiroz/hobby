@@ -18,6 +18,9 @@ import {
 } from "./remote";
 import { ANILIST_URL } from "./anilist";
 import type { Item, Media } from "./types";
+
+/** APIs abertas (Open Library, MusicBrainz) pedem um contato no User-Agent. Defina CONTACT_URL (site ou e-mail) no .env.local; o padrão é a página do projeto. */
+const USER_AGENT = `Hobby/1.0 (app de estudo; ${process.env.CONTACT_URL || "https://github.com/mchqueiroz/hobby"})`;
 import {
   mapAniListDetails,
   mapIgdbDetails,
@@ -86,7 +89,8 @@ export async function tmdbFindMovie(title: string, year?: number): Promise<Item 
   return first ? mapTmdb(first, "movie") : null;
 }
 
-export async function tmdbDiscover(vibes: string[]): Promise<Item[]> {
+/** Cada fonte devolve 20 por página; `page` (a partir de 1) deixa a Descobrir pedir mais quando as primeiras acabam. */
+export async function tmdbDiscover(vibes: string[], page = 1): Promise<Item[]> {
   const ids = Array.from(new Set(vibes.flatMap(tmdbGenreIdsFor)));
   if (ids.length === 0) return [];
   const params = {
@@ -95,15 +99,16 @@ export async function tmdbDiscover(vibes: string[]): Promise<Item[]> {
     "vote_count.gte": "300",
     language: "pt-BR",
     include_adult: "false",
+    page: String(page),
   };
-  const [movies, shows] = await Promise.all([
+  // se só uma das duas buscas falhar, a outra ainda vale
+  const [movies, shows] = await Promise.allSettled([
     tmdbGet<{ results?: TmdbResult[] }>("/3/discover/movie", params),
     tmdbGet<{ results?: TmdbResult[] }>("/3/discover/tv", params),
   ]);
-  return [
-    ...(movies.results ?? []).map((r) => mapTmdb(r, "movie")),
-    ...(shows.results ?? []).map((r) => mapTmdb(r, "tv")),
-  ].filter((i): i is Item => !!i);
+  if (movies.status === "rejected" && shows.status === "rejected") throw movies.reason;
+  const list = (r: typeof movies, kind: "movie" | "tv") => (r.status === "fulfilled" ? (r.value.results ?? []).map((x) => mapTmdb(x, kind)) : []);
+  return [...list(movies, "movie"), ...list(shows, "tv")].filter((i): i is Item => !!i);
 }
 
 /* ------------------------------ IGDB ------------------------------ */
@@ -147,12 +152,12 @@ export async function igdbSearch(q: string): Promise<Item[]> {
   return games.map(mapIgdb).filter((i): i is Item => !!i);
 }
 
-export async function igdbDiscover(vibes: string[]): Promise<Item[]> {
+export async function igdbDiscover(vibes: string[], page = 1): Promise<Item[]> {
   const names = Array.from(new Set(vibes.flatMap((v) => termsFor(IGDB_TERMS, v))));
   if (names.length === 0) return [];
   const list = names.map((n) => `"${n}"`).join(",");
   const games = await igdbQuery(
-    `${IGDB_FIELDS} where (genres.name = (${list}) | themes.name = (${list})) & total_rating_count > 100 & version_parent = null; sort total_rating_count desc; limit 20;`,
+    `${IGDB_FIELDS} where (genres.name = (${list}) | themes.name = (${list})) & total_rating_count > 100 & version_parent = null; sort total_rating_count desc; limit 20; offset ${(page - 1) * 20};`,
   );
   return games.map(mapIgdb).filter((i): i is Item => !!i);
 }
@@ -182,13 +187,13 @@ export async function anilistSearch(q: string, media: "anime" | "manga" = "anime
   return found.map((m) => mapAniListMedia(m, media)).filter((i): i is Item => !!i);
 }
 
-export async function anilistDiscover(vibes: string[], media: "anime" | "manga" = "anime"): Promise<Item[]> {
+export async function anilistDiscover(vibes: string[], media: "anime" | "manga" = "anime", page = 1): Promise<Item[]> {
   const genres = Array.from(new Set(vibes.flatMap((v) => termsFor(ANILIST_GENRES, v))));
   if (genres.length === 0) return [];
   const type = media === "manga" ? "MANGA" : "ANIME";
   const found = await anilist(
-    `query ($g: [String]) { Page(perPage: 20) { media(type: ${type}, genre_in: $g, sort: POPULARITY_DESC, isAdult: false) { ${MEDIA_FIELDS} } } }`,
-    { g: genres },
+    `query ($g: [String], $p: Int) { Page(page: $p, perPage: 20) { media(type: ${type}, genre_in: $g, sort: POPULARITY_DESC, isAdult: false) { ${MEDIA_FIELDS} } } }`,
+    { g: genres, p: page },
   );
   return found.map((m) => mapAniListMedia(m, media)).filter((i): i is Item => !!i);
 }
@@ -200,7 +205,7 @@ const OL_FIELDS = "key,title,author_name,first_publish_year,subject,cover_i,rati
 async function olGet<T>(url: URL): Promise<T> {
   return json<T>(
     await fetch(url, {
-      headers: { Accept: "application/json", "User-Agent": "Hobby/1.0 (app de estudo; contato no repositorio)" },
+      headers: { Accept: "application/json", "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(TIMEOUT),
       cache: "no-store",
     }),
@@ -216,13 +221,14 @@ export async function openLibrarySearch(q: string): Promise<Item[]> {
   return (body.docs ?? []).map(mapOpenLibrary).filter((i): i is Item => !!i);
 }
 
-export async function openLibraryDiscover(vibes: string[]): Promise<Item[]> {
+export async function openLibraryDiscover(vibes: string[], page = 1): Promise<Item[]> {
   const subjects = Array.from(new Set(vibes.map((v) => OL_DISCOVER[v as keyof typeof OL_DISCOVER]).filter((s): s is string => !!s))).slice(0, 4);
   if (subjects.length === 0) return [];
   const url = new URL(OPENLIB() + "/search.json");
   url.searchParams.set("q", subjects.map((s) => `subject:"${s}"`).join(" OR "));
   url.searchParams.set("sort", "rating");
   url.searchParams.set("limit", "20");
+  url.searchParams.set("page", String(page));
   url.searchParams.set("fields", OL_FIELDS);
   const body = await olGet<{ docs?: OpenLibraryDoc[] }>(url);
   return (body.docs ?? []).map(mapOpenLibrary).filter((i): i is Item => !!i && i.vibes.length > 0);
@@ -231,7 +237,7 @@ export async function openLibraryDiscover(vibes: string[]): Promise<Item[]> {
 /* ----------------------------- MusicBrainz ----------------------------- */
 
 // o MusicBrainz exige um User-Agent identificável e aceita cerca de 1 pedido por segundo por IP
-const MB_UA = "Hobby/1.0 (app de estudo; contato no repositorio)";
+const MB_UA = USER_AGENT;
 
 async function mbGet<T>(path: string, params: Record<string, string>): Promise<T> {
   const url = new URL(MUSICBRAINZ() + path);
@@ -262,11 +268,11 @@ export async function musicBrainzSearch(q: string, artist?: string): Promise<Ite
   return (body["release-groups"] ?? []).map(mapMusicBrainz).filter((i): i is Item => !!i).slice(0, 8);
 }
 
-export async function musicBrainzDiscover(vibes: string[]): Promise<Item[]> {
+export async function musicBrainzDiscover(vibes: string[], page = 1): Promise<Item[]> {
   const tags = Array.from(new Set(vibes.map((v) => MB_DISCOVER[v as keyof typeof MB_DISCOVER]).filter((s): s is string => !!s))).slice(0, 3);
   if (tags.length === 0) return [];
   const query = `(${tags.map((t) => `tag:"${lucene(t)}"`).join(" OR ")}) AND ${ALBUM_ONLY}`;
-  const body = await mbGet<{ "release-groups"?: MusicBrainzGroup[] }>("/ws/2/release-group", { query, limit: "25" });
+  const body = await mbGet<{ "release-groups"?: MusicBrainzGroup[] }>("/ws/2/release-group", { query, limit: "25", offset: String((page - 1) * 25) });
   // só álbum com tag votada por várias pessoas: o MusicBrainz não ordena por popularidade, e isto afasta os obscuros
   return (body["release-groups"] ?? [])
     .filter((g) => (g.tags ?? []).some((t) => (t.count ?? 0) >= 3))
@@ -321,15 +327,15 @@ export async function searchAll(q: string): Promise<RemoteResult> {
   return merge(t, g, a, m, o, u);
 }
 
-export async function discoverAll(vibes: string[]): Promise<RemoteResult> {
+export async function discoverAll(vibes: string[], page = 1): Promise<RemoteResult> {
   const c = configured();
   const [t, g, a, m, o, u] = await Promise.all([
-    settle(c.tmdb, () => tmdbDiscover(vibes)),
-    settle(c.igdb, () => igdbDiscover(vibes)),
-    settle(true, () => anilistDiscover(vibes, "anime")),
-    settle(true, () => anilistDiscover(vibes, "manga")),
-    settle(true, () => openLibraryDiscover(vibes)),
-    settle(true, () => musicBrainzDiscover(vibes)),
+    settle(c.tmdb, () => tmdbDiscover(vibes, page)),
+    settle(c.igdb, () => igdbDiscover(vibes, page)),
+    settle(true, () => anilistDiscover(vibes, "anime", page)),
+    settle(true, () => anilistDiscover(vibes, "manga", page)),
+    settle(true, () => openLibraryDiscover(vibes, page)),
+    settle(true, () => musicBrainzDiscover(vibes, page)),
   ]);
   return merge(t, g, a, m, o, u);
 }
@@ -378,6 +384,9 @@ export interface DetailsQuery {
 const ANILIST_DETAILS = `
   description(asHtml: false) episodes chapters volumes format averageScore
   trailer { id site }
+  externalLinks { site url type }
+  nextAiringEpisode { airingAt episode }
+  startDate { year month day }
   studios { nodes { name isAnimationStudio } }
   recommendations(perPage: 5, sort: RATING_DESC) { nodes { mediaRecommendation { title { romaji english } } } }`;
 
@@ -421,7 +430,7 @@ export async function findDetails(q: DetailsQuery): Promise<Details | null> {
 
   if (q.media === "jogo") {
     if (!c.igdb) return null;
-    const fields = "fields summary, total_rating, total_rating_count, genres.name, platforms.name, involved_companies.developer, involved_companies.company.name, videos.video_id, similar_games.name;";
+    const fields = "fields summary, first_release_date, total_rating, total_rating_count, genres.name, platforms.name, involved_companies.developer, involved_companies.company.name, videos.video_id, similar_games.name, websites.category, websites.url;";
     const where = kind === "igdb" && /^\d+$/.test(a ?? "")
       ? `where id = ${a};`
       : `search "${q.title.replace(/["\\]/g, " ")}"; where version_parent = null;`;

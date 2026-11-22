@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { cacheItem, saveEntry, track, undoLast, useHydrated, useLibrary } from "@/lib/store";
-import { STATUS_LABEL } from "@/lib/types";
+import { statusLabel, wantLabel } from "@/lib/types";
 import { useSearch } from "@/lib/useSearch";
 import { Cover, Header, MediaTag } from "@/components/ui";
 import { useShell } from "@/components/Shell";
@@ -45,17 +45,17 @@ export default function Buscar() {
                 <span className="row gap8" style={{ marginTop: 4 }}>
                   <MediaTag media={r.media} />
                   {r.year && <span className="muted" style={{ fontSize: 12 }}>{r.year}</span>}
-                  {e && <span className="muted" style={{ fontSize: 12 }}>{STATUS_LABEL[e.status]}</span>}
+                  {e && <span className="muted" style={{ fontSize: 12 }}>{statusLabel(e.status, r.media)}</span>}
                 </span>
               </Link>
               {!e ? (
                 <button type="button" className="btn ghost small" style={{ width: "auto", padding: "0 12px" }}
-                  aria-label={`Quero ver ${r.title}`}
+                  aria-label={`${wantLabel(r.media)} ${r.title}`}
                   onClick={() => {
                     saveEntry(r, "quero");
                     track("quick_want", { from: "buscar" });
-                    toast(`${r.title}: Quero ver`, () => { undoLast(); });
-                  }}>+ Quero ver</button>
+                    toast(`${r.title}: ${wantLabel(r.media)}`, () => { undoLast(); });
+                  }}>+ {wantLabel(r.media)}</button>
               ) : (
                 <button type="button" className="btn ghost small" style={{ width: "auto", padding: "0 12px" }}
                   onClick={() => openRegister(r)}>Editar</button>

@@ -4,16 +4,20 @@ import { forgetProfile } from "./profile";
 import { useSyncExternalStore } from "react";
 import { SEED_BY_ID, titleKey } from "./catalog";
 import { ownedTitles } from "./recommend";
-import { EMPTY_LIBRARY, type Entry, type Item, type Library, type Status, type UserList } from "./types";
+import { EMPTY_LIBRARY, cleanTags, type Entry, type Item, type Library, type Status, type UserList } from "./types";
 import type { Imported } from "./anilist";
 import { forgetParticipant, sendEvent } from "./telemetry";
-import { touch } from "./sync";
+import { mergeLibraries, sameLibrary, touch } from "./sync";
 
 /**
  * Armazenamento do MVP: localStorage, com cópia em memória caso o navegador bloqueie.
  * A interface (useLibrary + actions) é a mesma que o Supabase vai atender depois.
  */
 const KEY = "hobby:v1";
+/** Carimbo gravado por "Excluir meus dados": avisa as outras abas abertas para esvaziarem também (senão elas ressuscitariam o que foi apagado). */
+const DELETED_KEY = "hobby:deleted";
+/** Cópia do dado ilegível, guardada antes de começar vazio, para nunca perder a chance de recuperar. */
+const CORRUPT_KEY = "hobby:v1:corrupt";
 
 let state: Library = EMPTY_LIBRARY;
 let loaded = false;
@@ -40,22 +44,73 @@ function load(): Library {
       const parsed: unknown = JSON.parse(raw);
       // dados antigos não tinham listas: completa o que faltar
       if (isLibrary(parsed)) return { ...EMPTY_LIBRARY, ...parsed, lists: (parsed as Library).lists ?? {} };
+      keepCorrupt(raw);
     }
-  } catch {
-    /* navegador bloqueou o armazenamento ou o dado está corrompido: começa vazio */
+  } catch (e) {
+    // JSON quebrado: guarda o texto original antes de começar vazio (o próximo registro sobrescreveria a chave)
+    if (e instanceof SyntaxError) {
+      try { keepCorrupt(localStorage.getItem(KEY) ?? ""); } catch { /* ignora */ }
+    }
+    /* navegador bloqueou o armazenamento: começa vazio */
   }
   return EMPTY_LIBRARY;
 }
 
-function persist() {
+function keepCorrupt(raw: string) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    if (raw) localStorage.setItem(CORRUPT_KEY, raw);
   } catch {
-    /* sem espaço ou bloqueado: o estado segue em memória durante a sessão */
+    /* sem espaço: nada a fazer */
   }
 }
 
+/** true quando a última tentativa de gravar neste aparelho falhou (cheio ou bloqueado): a pessoa precisa saber, senão perde o dado ao fechar. */
+let persistFailed = false;
+function persist() {
+  let failed = false;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    failed = true; // o estado segue em memória durante a sessão
+  }
+  if (failed !== persistFailed) {
+    persistFailed = failed;
+    listeners.forEach((l) => l());
+  }
+}
+
+export function useStorageProblem(): boolean {
+  return useSyncExternalStore(subscribe, () => persistFailed, () => false);
+}
+
+let watching = false;
+/** Várias abas abertas: junta o que outra aba gravou (sem apagar nada) e esvazia se outra aba excluiu tudo. */
+export function watchOtherTabs() {
+  if (watching || typeof window === "undefined") return;
+  watching = true;
+  window.addEventListener("storage", (e) => {
+    if (e.key === DELETED_KEY && e.newValue) {
+      state = EMPTY_LIBRARY;
+      loaded = true;
+      listeners.forEach((l) => l());
+      return;
+    }
+    if (e.key !== KEY || !e.newValue) return;
+    let parsed: unknown;
+    try { parsed = JSON.parse(e.newValue); } catch { return; }
+    if (!isLibrary(parsed)) return;
+    const other: Library = { ...EMPTY_LIBRARY, ...parsed, lists: parsed.lists ?? {} };
+    const merged = mergeLibraries(snapshot(), other);
+    if (sameLibrary(merged, state)) return;
+    state = merged;
+    listeners.forEach((l) => l());
+    if (!sameLibrary(merged, other)) persist(); // esta aba tinha algo que a outra não tinha: grava o resultado da soma
+  });
+}
+
 function set(next: Library) {
+  // garante que o que estava gravado foi lido (e, se estava ilegível, copiado) antes de ser sobrescrito
+  if (!loaded && typeof window !== "undefined") snapshot();
   state = next;
   persist();
   listeners.forEach((l) => l());
@@ -100,6 +155,9 @@ export function saveEntry(item: Item, status: Status, rating?: number, review?: 
   const typed = review?.trim().slice(0, MAX_REVIEW);
   const entry: Entry = { itemId: item.id, status, rating, at: Date.now(), review: typed || prev?.review, date: prev?.date };
   if (status === "andamento" && prev?.progress) entry.progress = prev.progress;
+  if (prev?.total) entry.total = prev.total;
+  if (prev?.rounds) entry.rounds = prev.rounds;
+  if (prev?.tags?.length) entry.tags = prev.tags;
   const isSeed = !!SEED_BY_ID[item.id];
   const wasDismissed = lib.dismissed.includes(item.id);
   set({
@@ -197,7 +255,7 @@ export function setGoal(goal: number) {
 }
 
 /** Resenha e data de um item já registrado. `undefined` mantém, texto vazio apaga a resenha. */
-export function setNote(itemId: string, patch: { review?: string; date?: number | null; progress?: number | null }) {
+export function setNote(itemId: string, patch: { review?: string; date?: number | null; progress?: number | null; total?: number | null }) {
   const lib = snapshot();
   const e = lib.entries[itemId];
   if (!e) return;
@@ -215,9 +273,69 @@ export function setNote(itemId: string, patch: { review?: string; date?: number 
     if (patch.progress === null || !Number.isFinite(patch.progress) || patch.progress <= 0) delete next.progress;
     else next.progress = Math.min(99999, Math.round(patch.progress * 10) / 10);
   }
+  if (patch.total !== undefined) {
+    if (patch.total === null || !Number.isFinite(patch.total) || patch.total <= 0) delete next.total;
+    else next.total = Math.min(99999, Math.round(patch.total));
+  }
   set({ ...lib, entries: { ...lib.entries, [itemId]: next }, ts: touch(lib, [`e:${itemId}`]) });
 }
 export const MAX_REVIEW = 2000;
+
+/** Define as etiquetas de um registro (limpa, limita e ordena como a pessoa digitou). */
+export function setTags(itemId: string, tags: string[]) {
+  const lib = snapshot();
+  const e = lib.entries[itemId];
+  if (!e) return;
+  const next: Entry = { ...e };
+  const clean = cleanTags(tags);
+  if (clean.length) next.tags = clean;
+  else delete next.tags;
+  set({ ...lib, entries: { ...lib.entries, [itemId]: next }, ts: touch(lib, [`e:${itemId}`]) });
+}
+
+/** meio-dia de hoje, no horário local (o mesmo formato do campo de data) */
+const todayNoon = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).getTime();
+};
+
+/**
+ * Avança (ou recua) o progresso de uma obra. Sair de "quero" começa a obra; chegar no total conclui,
+ * com a data de hoje se a pessoa ainda não escolheu uma. Devolve o que aconteceu, para a tela avisar.
+ */
+export function stepProgress(itemId: string, delta = 1): { ok: boolean; completed: boolean; value: number } {
+  const lib = snapshot();
+  const prev = lib.entries[itemId];
+  if (!prev || prev.status === "concluido" || prev.status === "abandonei") return { ok: false, completed: false, value: prev?.progress ?? 0 };
+  const total = typeof prev.total === "number" && prev.total > 0 ? prev.total : undefined;
+  let value = Math.max(0, Math.round(((prev.progress ?? 0) + delta) * 10) / 10);
+  if (total) value = Math.min(value, total);
+  const completed = !!total && value >= total && delta > 0;
+  const next: Entry = { ...prev, status: completed ? "concluido" : "andamento", at: Date.now() };
+  if (value > 0) next.progress = value;
+  else delete next.progress;
+  if (completed) next.date = prev.date ?? todayNoon();
+  set({ ...lib, entries: { ...lib.entries, [itemId]: next }, ts: touch(lib, [`e:${itemId}`]) });
+  lastUndo = () => {
+    const cur = snapshot();
+    set({ ...cur, entries: { ...cur.entries, [itemId]: prev }, ts: touch(cur, [`e:${itemId}`]) });
+  };
+  return { ok: true, completed, value };
+}
+
+/** "Rever/reler/rejogar": soma uma vez no contador e põe a data de hoje. A obra continua concluída. */
+export function redo(itemId: string): number | null {
+  const lib = snapshot();
+  const prev = lib.entries[itemId];
+  if (!prev || prev.status !== "concluido") return null;
+  const rounds = Math.min(99, (typeof prev.rounds === "number" && prev.rounds >= 1 ? Math.floor(prev.rounds) : 1) + 1);
+  set({ ...lib, entries: { ...lib.entries, [itemId]: { ...prev, rounds, date: todayNoon(), at: Date.now() } }, ts: touch(lib, [`e:${itemId}`]) });
+  lastUndo = () => {
+    const cur = snapshot();
+    set({ ...cur, entries: { ...cur.entries, [itemId]: prev }, ts: touch(cur, [`e:${itemId}`]) });
+  };
+  return rounds;
+}
 
 /* ------------------------------ listas ------------------------------ */
 
@@ -244,6 +362,20 @@ export function deleteList(id: string) {
   const lists = { ...lib.lists };
   delete lists[id];
   set({ ...lib, lists, ts: touch(lib, [`l:${id}`]) });
+}
+
+/** Move um item uma posição para cima (-1) ou para baixo (+1) na lista. Devolve a nova posição, ou null se não mexeu. */
+export function moveInList(listId: string, itemId: string, delta: -1 | 1): number | null {
+  const lib = snapshot();
+  const l = lib.lists[listId];
+  if (!l) return null;
+  const i = l.itemIds.indexOf(itemId);
+  const j = i + delta;
+  if (i < 0 || j < 0 || j >= l.itemIds.length) return null;
+  const ids = l.itemIds.slice();
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  set({ ...lib, lists: { ...lib.lists, [listId]: { ...l, itemIds: ids } }, ts: touch(lib, [`l:${listId}`]) });
+  return j;
 }
 
 /** Põe ou tira o item da lista. Itens de API são guardados na biblioteca para a lista poder mostrá-los. */
@@ -275,7 +407,7 @@ export function subscribeLibrary(cb: () => void): () => void {
   return () => listeners.delete(cb);
 }
 
-/** Dados de exemplo para demonstração. Itens do catálogo base, notas inventadas. */
+/** Dados de exemplo para demonstração. Itens do catálogo base, notas inventadas. Nunca sobrescreve registros reais. */
 export function loadDemo() {
   const pick: [string, Status, number?][] = [
     ["seed:anime:cowboy-bebop", "concluido", 5],
@@ -298,7 +430,22 @@ export function loadDemo() {
   pick.forEach(([id, status, rating], i) => {
     entries[id] = { itemId: id, status, rating, at: now - i * 86_400_000 };
   });
-  set({ ...EMPTY_LIBRARY, entries });
+  // soma ao que já existe: o que a pessoa registrou de verdade tem prioridade e nada é apagado
+  const cur = snapshot();
+  set({ ...cur, entries: { ...entries, ...cur.entries } });
+}
+
+/**
+ * Restaura um backup SOMANDO ao que já existe (nunca apaga nada). Para cada registro vale o mais recente.
+ * Devolve quantos registros e listas passaram a existir por causa do backup.
+ */
+export function restoreBackup(backup: Library): { entries: number; lists: number } {
+  const cur = snapshot();
+  const merged = mergeLibraries(cur, backup);
+  const entries = Object.keys(merged.entries).filter((id) => !cur.entries[id]).length;
+  const lists = Object.keys(merged.lists).filter((id) => !cur.lists[id]).length;
+  set(merged);
+  return { entries, lists };
 }
 
 export function exportData(): string {
@@ -308,7 +455,9 @@ export function exportData(): string {
 export function deleteAll() {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(CORRUPT_KEY);
     localStorage.removeItem(EVENTS_KEY);
+    localStorage.setItem(DELETED_KEY, String(Date.now()));
   } catch {
     /* ignora */
   }

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { diaryGroups } from "@/lib/stats";
 import { useHydrated, useLibrary } from "@/lib/store";
-import { STATUS_LABEL } from "@/lib/types";
+import { statusLabel } from "@/lib/types";
 import { Cover, Header, MediaTag, Rating } from "@/components/ui";
 import { LibNav } from "@/components/LibNav";
 
@@ -41,7 +41,7 @@ export default function Diario() {
                     <strong style={{ fontSize: 15, display: "block" }}>{item.title}</strong>
                     <span className="row gap8" style={{ marginTop: 4, flexWrap: "wrap" }}>
                       <MediaTag media={item.media} />
-                      <span className="muted" style={{ fontSize: 12 }}>{STATUS_LABEL[e.status]}</span>
+                      <span className="muted" style={{ fontSize: 12 }}>{statusLabel(e.status, item.media)}</span>
                       <Rating value={e.rating} size={12} />
                     </span>
                     {e.review && (

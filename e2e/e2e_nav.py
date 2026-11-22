@@ -15,10 +15,12 @@ with sync_playwright() as p:
     pg.on("console", lambda m: errs.append(m.text) if m.type == "error" and "Failed to load resource" not in m.text else None)
     pg.goto(BASE + "/importar"); pg.click("text=Ver com dados de exemplo"); pg.wait_for_url("**/descobrir")
     nav = pg.locator('nav[aria-label="Principal"]')
-    check("menu tem 4 links e o +", nav.locator("a").count() == 4 and nav.locator("button.plus").count() == 1)
+    check("menu tem 5 links e o +", nav.locator("a").count() == 5 and nav.locator("button.plus").count() == 1)
+    check("menu: Início, Biblioteca, Descobrir, Social, Perfil", nav.locator("a").all_inner_texts() == ["Início", "Biblioteca", "Descobrir", "Social", "Perfil"], str(nav.locator("a").all_inner_texts()))
+    check("Descobrir marcado na página atual", nav.locator('a[aria-current="page"]').inner_text() == "Descobrir")
     check("sem rolagem horizontal no celular", pg.evaluate("document.documentElement.scrollWidth <= innerWidth"))
-    nav.locator("a", has_text="Buscar").click(); pg.wait_for_url("**/buscar")
-    check("buscar fica marcado", nav.locator('a[aria-current="page"]').inner_text() == "Buscar")
+    pg.get_by_role("link", name="Buscar", exact=True).click(); pg.wait_for_url("**/buscar")
+    check("lupa do cabeçalho some na própria busca", pg.get_by_role("link", name="Buscar", exact=True).count() == 0)
     check("campo de busca já focado", pg.evaluate("document.activeElement.id") == "busca-global")
     pg.fill("#busca-global", "duna")
     pg.wait_for_selector("li >> text=Duna")
@@ -48,6 +50,7 @@ with sync_playwright() as p:
     check("botão + soma episódios", pg.input_value("#progresso") == "2")
     pg.fill("#progresso", "13")
     pg.goto(BASE + "/biblioteca"); pg.get_by_role("button", name="Em andamento").click()
+    pg.evaluate("(() => { const d = document.querySelector('details.morefilters'); if (d) d.open = true; })()")
     check("progresso aparece na biblioteca", "ep. 13" in pg.locator("ul").first.inner_text())
 
     # ordenar, filtrar, grade

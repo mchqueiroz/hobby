@@ -28,14 +28,20 @@ with sync_playwright() as p:
     check("filme: sinopse", "herdeiro viaja ao planeta" in t, t)
     check("filme: elenco e direção", "Zendaya" in t and "Denis Villeneuve" in t, t)
     check("filme: streaming no Brasil", "Max" in t)
+    check("filme: aluguel e compra", "Apple TV" in t and "Google Play Filmes" in t, t)
+    check("filme: crédito ao JustWatch e link para a página", "JustWatch" in t and pg.locator('[data-testid=onde] a:has-text("Ver tudo no JustWatch")').get_attribute("href").startswith("https://www.themoviedb.org/"))
+    check("filme: links de busca abrem em aba segura", pg.locator("[data-testid=onde-busca] a").first.get_attribute("rel") == "noopener noreferrer" and "justwatch.com/br/busca?q=Duna" in pg.locator("[data-testid=onde-busca] a").first.get_attribute("href"))
     check("filme: duração e gêneros", "2h 35min" in t, t)
     check("filme: link do trailer seguro", pg.locator('a:has-text("Ver trailer")').get_attribute("href") == "https://www.youtube.com/watch?v=duneTrailer1"
           and pg.locator('a:has-text("Ver trailer")').get_attribute("rel") == "noopener noreferrer")
     t = item(pg, "seed:jogo:hades")
     check("jogo: sinopse e estúdio", "Fuja do submundo" in t and "Supergiant Games" in t, t)
+    check("jogo: loja Steam com link https", pg.locator('[data-testid=onde-links] a:has-text("Steam")').get_attribute("href") == "https://store.steampowered.com/app/1145360")
+    check("jogo: site oficial não vira loja", "oficial.example" not in pg.locator("[data-testid=onde]").inner_html())
     check("jogo: parecidos", "Dead Cells" in t)
     t = item(pg, "seed:anime:death-note")
     check("anime: sinopse com quebra de linha", "Um estudante acha um caderno." in t and "Madhouse" in t, t)
+    check("anime sem dados de streaming: diz que não sabe e oferece busca", "Ainda não sabemos onde está disponível" in pg.locator("[data-testid=onde]").inner_text() and pg.locator("[data-testid=onde-busca] a").count() >= 1)
     check("anime: nota 8,5", "8,5 de 10" in t, t)
     # obra sem dados na fonte
     t = item(pg, "seed:jogo:hollow-knight")
@@ -55,9 +61,9 @@ with sync_playwright() as p:
         sec.get_by_role("button", name="Sortear").click()
         pg.wait_for_timeout(100)
         check("filtro Jogo só devolve jogo", "Jogo" in sec.locator("[aria-live=polite]").inner_text())
-    # aceitar vira "quero ver"
+    # aceitar vira "quero jogar" (o verbo acompanha a mídia)
     name = sec.locator("[aria-live=polite] a").first.inner_text()
-    sec.get_by_role("button", name="Quero ver").click()
+    sec.get_by_role("button", name="Quero jogar").click()
     st = pg.evaluate("() => JSON.parse(localStorage.getItem('hobby:v1')).entries")
     check("aceitar grava como quero ver", any(e["status"] == "quero" for e in st.values()))
     # da minha lista: só itens de quero ver

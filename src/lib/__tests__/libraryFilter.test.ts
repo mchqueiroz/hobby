@@ -17,7 +17,8 @@ const lib: Library = {
   entries: Object.fromEntries(items.map((i, n) => [i.id, { itemId: i.id, status: i.id === "f" ? "quero" : "concluido", rating: n % 5 + 1, at: 1000 + n }])),
 };
 const rows = allRows(lib);
-const F = (p: Partial<Filters> = {}): Filters => ({ ...DEFAULT_FILTERS, ...p });
+// a maioria dos casos mira os concluídos; o padrão do app ("todos") tem teste próprio
+const F = (p: Partial<Filters> = {}): Filters => ({ ...DEFAULT_FILTERS, status: "concluido", ...p });
 const ids = (f: Filters) => applyFilters(rows, f).map((r) => r.item.id);
 
 describe("épocas", () => {
@@ -33,8 +34,11 @@ describe("épocas", () => {
 });
 
 describe("filtros da biblioteca", () => {
+  it("por padrão mostra todos os status, para o que acabou de ser salvo aparecer", () => {
+    expect(ids(DEFAULT_FILTERS).sort()).toEqual(["a", "b", "c", "d", "e", "f"]);
+  });
   it("só mostra o status escolhido", () => {
-    expect(ids(F()).sort()).toEqual(["a", "b", "c", "d", "e"]);
+    expect(ids(F({ status: "concluido" })).sort()).toEqual(["a", "b", "c", "d", "e"]);
     expect(ids(F({ status: "quero" }))).toEqual(["f"]);
   });
   it("categoria, época e estilo se combinam (todos os estilos marcados)", () => {

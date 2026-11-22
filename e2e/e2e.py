@@ -1,3 +1,4 @@
+import re
 import os; os.makedirs("/tmp/hobby-shots", exist_ok=True)
 import json, re, sys
 from playwright.sync_api import sync_playwright
@@ -17,9 +18,10 @@ with sync_playwright() as p:
     pg.on("response", lambda r: bad.append(f"{r.status} {r.url}") if r.status >= 400 and "/api/anilist" not in r.url else None)
     pg.on("pageerror", lambda e: errors.append(str(e)))
 
-    # 1. entrada vazia vai para importar
-    pg.goto(BASE + "/"); pg.wait_for_url("**/importar", timeout=8000)
-    check("home vazia redireciona para /importar", pg.url.endswith("/importar"))
+    # 1. entrada vazia mostra a apresentação, e o botão leva para importar
+    pg.goto(BASE + "/"); pg.wait_for_selector("[data-testid=cta-comecar]", timeout=8000)
+    pg.click("[data-testid=cta-comecar]"); pg.wait_for_url("**/importar", timeout=8000)
+    check("home vazia mostra apresentação e 'Começar' leva a /importar", pg.url.endswith("/importar"))
 
     # 2. erros da importação
     for user, expected in [("ghost", "Não encontramos"), ("privado", "privada")]:
@@ -80,7 +82,7 @@ with sync_playwright() as p:
     check("Desfazer traz o item de volta", first in titles3, str(titles3))
 
     # 7. 'Quero ver' sai da lista e entra na biblioteca
-    pg.locator("li.card").nth(0).locator("text=Quero ver").click(); pg.wait_for_selector(".toast")
+    pg.locator("li.card").nth(0).get_by_role("button", name=re.compile(r"^Quero (ver|ler|jogar|ouvir)$")).click(); pg.wait_for_selector(".toast")
 
     # regressão: com o aviso na tela, a folha de registro precisa abrir e fechar (Esc e clique no fundo)
     pg.click('button[aria-label="Registrar um item"]'); pg.wait_for_selector("[role=dialog]")
@@ -122,7 +124,10 @@ with sync_playwright() as p:
     # 9. biblioteca / item / perfil / métricas
     pg.click("nav >> text=Biblioteca"); pg.wait_for_url("**/biblioteca"); pg.wait_for_selector("ul li")
     rows = pg.locator("ul li").count()
-    check("biblioteca lista os concluídos (8 importados + 5 favoritos + 1 registrado = 14)", rows == 14, str(rows))
+    check("biblioteca abre mostrando tudo, inclusive o que ainda não foi concluído", rows == 18, str(rows))
+    pg.get_by_role("button", name="Concluídos").click(); pg.wait_for_timeout(200)
+    rows = pg.locator("ul li").count()
+    check("filtrar por Concluídos mostra 14 (8 importados + 5 favoritos + 1 registrado)", rows == 14, str(rows))
     pg.screenshot(path="/tmp/hobby-shots/06_biblioteca.png")
     pg.click("text=Quero ver"); pg.wait_for_timeout(200)
     check("aba 'Quero ver' tem Haikyu!! importado + 1 aceito", pg.locator("ul li").count() == 2, str(pg.locator("ul li").count()))
@@ -154,11 +159,11 @@ with sync_playwright() as p:
     # excluir dados (LGPD)
     pg.goto(BASE + "/perfil"); pg.click("text=Excluir meus dados"); pg.click("text=Confirmar exclusão"); pg.wait_for_timeout(300)
     check("excluir apaga biblioteca e eventos", pg.evaluate("localStorage.getItem('hobby:events')") is None and not json.loads(pg.evaluate("localStorage.getItem('hobby:v1')") or "{}").get("entries"))
-    pg.goto(BASE + "/"); pg.wait_for_url("**/importar")
-    check("depois de excluir, volta ao onboarding", True)
+    pg.goto(BASE + "/"); pg.wait_for_selector("[data-testid=cta-comecar]")
+    check("depois de excluir, volta à apresentação", True)
 
     # dados de exemplo
-    pg.click("text=Ver com dados de exemplo"); pg.wait_for_url("**/descobrir"); pg.wait_for_selector("li.card")
+    pg.click("text=Ver com dados de exemplo"); pg.wait_for_url("**/inicio"); pg.goto(BASE + "/descobrir"); pg.wait_for_selector("li.card")
     check("dados de exemplo geram sugestões", pg.locator("li.card").count() >= 3)
     pg.screenshot(path="/tmp/hobby-shots/10_demo.png")
 

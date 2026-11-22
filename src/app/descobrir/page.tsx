@@ -5,10 +5,14 @@ import { useEffect, useMemo, useState } from "react";
 import { recommend, topVibes } from "@/lib/recommend";
 import { buildPool } from "@/lib/search";
 import { cacheItem, dismiss, saveEntry, track, undismiss, undoLast, useHydrated, useLibrary } from "@/lib/store";
-import { MEDIAS, MEDIA_PLURAL, type Item, type Media } from "@/lib/types";
+import { MEDIAS, MEDIA_PLURAL, wantLabel, type Item, type Media } from "@/lib/types";
 import { Chips, Cover, Header, MediaTag } from "@/components/ui";
 import { useShell } from "@/components/Shell";
 import { Tonight } from "@/components/Tonight";
+
+const PAGE_SIZE = 5;
+/** igual ao limite da rota /api/discover */
+const MAX_PAGE = 4;
 
 const FILTERS: { value: Media | "tudo"; label: string }[] = [
   { value: "tudo", label: "Tudo" },
@@ -21,24 +25,37 @@ export default function Descobrir() {
   const { toast } = useShell();
   const [media, setMedia] = useState<Media | "tudo">("tudo");
   const [remote, setRemote] = useState<Item[]>([]);
+  const [count, setCount] = useState(PAGE_SIZE);
+  // página de candidatos já pedida; volta para a 1 quando o gosto muda (outras vibes no topo)
+  const [asked, setAsked] = useState({ key: "", page: 1 });
+  const hasData = Object.keys(lib.entries).length > 0;
+  const vibesKey = topVibes(lib, 5).join(",");
+  const page = asked.key === vibesKey ? asked.page : 1;
   const pool = useMemo(() => buildPool(remote), [remote]);
   const recs = useMemo(
-    () => recommend(lib, { pool, media: media === "tudo" ? undefined : media, count: 5 }),
-    [lib, media, pool],
+    () => recommend(lib, { pool, media: media === "tudo" ? undefined : media, count, bet: true }),
+    [lib, media, pool, count],
   );
-  const hasData = Object.keys(lib.entries).length > 0;
-  const vibesKey = topVibes(lib, 3).join(",");
 
   // candidatos reais dos catálogos, escolhidos pelas vibes que mais pesam no gosto
   useEffect(() => {
     if (!ready || !vibesKey) return;
     const ctrl = new AbortController();
-    fetch(`/api/discover?vibes=${encodeURIComponent(vibesKey)}`, { signal: ctrl.signal })
+    fetch(`/api/discover?vibes=${encodeURIComponent(vibesKey)}&page=${page}`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : { items: [] }))
-      .then((b: { items?: Item[] }) => setRemote(Array.isArray(b.items) ? b.items : []))
+      .then((b: { items?: Item[] }) => {
+        const got = Array.isArray(b.items) ? b.items : [];
+        setRemote((prev) => (page === 1 ? got : [...prev, ...got]));
+      })
       .catch(() => {});
     return () => ctrl.abort();
-  }, [ready, vibesKey]);
+  }, [ready, vibesKey, page]);
+
+  function more() {
+    setCount((c) => c + PAGE_SIZE);
+    // as sugestões atuais não enchem a próxima leva: busca mais candidatos nas fontes
+    if (recs.length < count + PAGE_SIZE && page < MAX_PAGE) setAsked({ key: vibesKey, page: page + 1 });
+  }
 
   useEffect(() => {
     if (ready && recs.length) track("rec_view", { n: recs.length, media });
@@ -51,7 +68,6 @@ export default function Descobrir() {
   return (
     <>
       <Header title="Para você hoje" />
-      {hasData && <Tonight pool={pool} />}
       <div className="mt16"><Chips label="Filtrar por mídia" options={FILTERS} value={media} onChange={setMedia} /></div>
 
       {!hasData && (
@@ -81,16 +97,18 @@ export default function Descobrir() {
                 <div className="row gap8 mt8" style={{ flexWrap: "wrap" }}>
                   <MediaTag media={r.item.media} />
                   {r.item.brazil && <span className="tag dark">Brasil</span>}
+                  {r.bet && <span className="tag dark" data-testid="aposta">Aposta</span>}
                 </div>
                 <p style={{ fontSize: 13, marginTop: 8 }}>{r.reason}</p>
+                {r.bet && <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Foge um pouco do que você costuma ver, mas tem a ver com o que você gostou.</p>}
               </div>
             </div>
             <div className="row gap8 mt12">
               <button type="button" className="btn small" onClick={() => {
                 saveEntry(r.item, "quero");
-                track("rec_accept", { cross: r.anchor ? r.anchor.item.media !== r.item.media : false });
-                toast(`${r.item.title}: Quero ver`, () => { undoLast(); });
-              }}>Quero ver</button>
+                track("rec_accept", { cross: r.anchor ? r.anchor.item.media !== r.item.media : false, bet: !!r.bet });
+                toast(`${r.item.title}: ${wantLabel(r.item.media)}`, () => { undoLast(); });
+              }}>{wantLabel(r.item.media)}</button>
               <button type="button" className="btn ghost small" onClick={() => {
                 dismiss(r.item.id, r.item);
                 track("rec_dismiss");
@@ -100,6 +118,12 @@ export default function Descobrir() {
           </li>
         ))}
       </ul>
+
+      {hasData && (recs.length >= count || page < MAX_PAGE) && (
+        <button type="button" className="btn ghost mt16" data-testid="mais-sugestoes" onClick={more}>Mostrar mais</button>
+      )}
+
+      {hasData && <Tonight pool={pool} />}
     </>
   );
 }

@@ -33,7 +33,7 @@ with sync_playwright() as p:
     check("Descobrir tem filtro de mangás e livros", pg.locator("button.chip", has_text="Mangás").count() == 1 and pg.locator("button.chip", has_text="Livros").count() == 1)
     pg.locator("button.chip", has_text="Livros").click()
     pg.wait_for_timeout(300)
-    tags = [t for t in pg.locator("main .tag").all_inner_texts() if t != "Brasil"]
+    tags = [t for t in pg.locator("main .tag").all_inner_texts() if t not in ("Brasil", "Aposta")]
     check("filtro de livros: há sugestões e só de livros", len(tags) > 0 and set(tags) == {"Livro"}, str(tags))
 
     # busca traz mangá e livro e dá para registrar
@@ -41,7 +41,7 @@ with sync_playwright() as p:
     pg.fill("#busca-global", "mock")
     pg.wait_for_selector("li >> text=Arrakis Mock")
     check("busca mostra o mangá", pg.locator("li >> text=Pluto Mock").count() > 0)
-    pg.get_by_role("button", name="Quero ver Arrakis Mock").click()
+    pg.get_by_role("button", name="Quero ler Arrakis Mock").click()
     ent = pg.evaluate("() => JSON.parse(localStorage.getItem('hobby:v1')).entries")
     check("livro entra na biblioteca", ent.get("openlibrary:OL777W", {}).get("status") == "quero", str(list(ent)[-3:]))
 

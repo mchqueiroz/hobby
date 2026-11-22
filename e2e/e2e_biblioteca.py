@@ -21,6 +21,9 @@ with sync_playwright() as p:
       s.forEach((id, n) => l.entries[id] = {itemId: id, status: 'concluido', rating: 3 + (n % 3), at: 1000 + n});
       localStorage.setItem('hobby:v1', JSON.stringify(l)); }""", seeds)
     pg.goto(BASE + "/biblioteca"); pg.wait_for_selector("[data-testid=resumo]")
+    check("filtros extras começam fechados", pg.locator("details.morefilters[open]").count() == 0)
+    check("a página abre mostrando todos os status", pg.get_by_role("button", name="Todos").get_attribute("aria-pressed") == "true")
+    pg.evaluate("(() => { const d = document.querySelector('details.morefilters'); if (d) d.open = true; })()")
     grp = lambda name: pg.get_by_role("group", name=name, exact=True)
     titles = lambda: pg.locator("ul.cols2 li strong").all_inner_texts()
 
@@ -54,6 +57,7 @@ with sync_playwright() as p:
     # filtros persistem ao abrir uma obra e voltar
     pg.locator("ul.cols2 li a").first.click(); pg.wait_for_url("**/item/**")
     pg.go_back(); pg.wait_for_selector("[data-testid=resumo]")
+    pg.evaluate("(() => { const d = document.querySelector('details.morefilters'); if (d) d.open = true; })()")
     check("filtros continuam ao voltar da obra", grp("Categoria").get_by_role("button", name="Jogos").get_attribute("aria-pressed") == "true" and grp("Época").get_by_role("button", name="2010s").get_attribute("aria-pressed") == "true")
 
     # limpar

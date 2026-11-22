@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
-import { computeStats } from "@/lib/stats";
+import { computeStats, heatmap } from "@/lib/stats";
 import { fmtRating } from "@/lib/recommend";
 import { useHydrated, useLibrary } from "@/lib/store";
 import { MEDIAS, MEDIA_PLURAL, STATUS_LABEL, type Status } from "@/lib/types";
@@ -51,6 +52,8 @@ export default function Estatisticas() {
             <div className="card stat"><b>{s.reviews}</b><span>{s.reviews === 1 ? "resenha" : "resenhas"}</span></div>
           </div>
 
+          <Link href="/retrospectiva" className="btn ghost small mt16" style={{ width: "auto" }}>Ver minha retrospectiva do ano</Link>
+
           <p className="label">Por mídia</p>
           <div className="card">
             {medias.map((m) => (
@@ -73,6 +76,22 @@ export default function Estatisticas() {
                 <Bar key={i} label={`${fmtRating((i + 1) / 2)}★`} value={s.histogram[i]} max={maxHist} />
               ))
             )}
+          </div>
+
+          <p className="label">Atividade nas últimas 20 semanas</p>
+          <div className="card" data-testid="heatmap">
+            {(() => {
+              const cols = heatmap(lib, 20);
+              const total = cols.flat().reduce((n, d) => n + d.count, 0);
+              return (
+                <>
+                  <div className="heat" role="img" aria-label={`${total} registros nas últimas 20 semanas`}>
+                    {cols.map((c, i) => <div key={i}>{c.map((d) => <i key={d.day} className={d.future ? "f" : `l${Math.min(d.count, 3)}`} title={d.future ? undefined : `${d.count} registro(s)`} />)}</div>)}
+                  </div>
+                  <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{total} registros com data. Quanto mais escuro, mais itens no dia.</p>
+                </>
+              );
+            })()}
           </div>
 
           <p className="label">Concluídos em {new Date().getFullYear()}</p>

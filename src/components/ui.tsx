@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, type CSSProperties } from "react";
 import { useCover } from "@/lib/covers";
 import type { Item, Media } from "@/lib/types";
@@ -68,10 +70,27 @@ export function Chips<T extends string>({
   );
 }
 
-export function Header({ title, sub }: { title: string; sub?: string }) {
+/** Barra de progresso acessível. Sem total não há porcentagem, então não desenha nada. */
+export function ProgressBar({ value, total, label }: { value: number; total?: number; label: string }) {
+  if (!total) return null;
+  const pct = Math.min(100, Math.round((value / total) * 100));
   return (
-    <header>
+    <div className="pbar" role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={Math.min(value, total)}>
+      <i style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+export function Header({ title, sub }: { title: string; sub?: string }) {
+  const path = usePathname();
+  return (
+    <header className="hdr">
       <div className="word">hobby</div>
+      {path !== "/buscar" && (
+        <Link href="/buscar" className="hsearch" aria-label="Buscar">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        </Link>
+      )}
       <h1 style={{ marginTop: 14 }}>{title}</h1>
       {sub && <p className="sub">{sub}</p>}
     </header>

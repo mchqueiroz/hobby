@@ -38,6 +38,16 @@ acerto@10 contra o que a pessoa de fato viu depois ("logged", sujeito a viés de
 > e conferido com `scripts/eval-tradeoff.ts` (v1 0,229, popularidade 0,557, v2 0,640). O laboratório continua usando só as três mídias originais e os 30 vibes originais
 > (anime, jogo, filme); mangá, livro, música e os vibes novos entram quando houver dados reais.
 
+## Regras de produto em cima do v2 (etapa 13)
+
+Estas regras vieram de olhar a lista real, não do laboratório. **Não foram avaliadas** no mundo sintético, que não tem franquias nem autores, e valem como hipóteses a medir com uso real (`rec_accept`, `rec_dismiss`, com a marca `bet`).
+
+- **Franquia.** Candidato que continua algo que a pessoa já tem sai da lista de descobertas ("Haikyu!! Second Season", "Steins;Gate 0"). Só anime, mangá e filmes/séries; título de uma palavra só casa por igualdade ("Monster" não engole "Monster Musume"). Jogos, livros e álbuns não entram ("Hades II" é boa sugestão para quem zerou "Hades"). Falha esperada: franquias com nomes muito diferentes entre fontes passam.
+- **Autor/artista.** Peso 0,18 vezes a média encolhida das notas daquela pessoa para o autor (um registro vale pouco). Sozinho, não passa de um empurrão: não faz um livro de vibes opostas entrar.
+- **Duas obras no motivo** quando a segunda pesou pelo menos 70% da primeira e divide 2 vibes ou mais com a sugestão.
+- **Aposta.** Uma por lista: entre as sugestões acima da média que sobraram, a que mais foge das 8 vibes de sempre da pessoa (peso 0,4 na novidade). Só aparece com 4 sugestões ou mais.
+- **Candidatos.** A Descobrir pede à fonte as páginas 1 a 4; antes, vinha só a página 1 (os 20 mais populares), e a lista acabava rápido.
+
 ## Resultados (5 mundos de teste, 1250 pessoas)
 
 | método | oráculo | cauda | hit@10 logged |

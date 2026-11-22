@@ -198,3 +198,51 @@ describe("mapMusicBrainzDetails", () => {
     expect(mapMusicBrainzDetails({}).facts).toEqual([]);
   });
 });
+
+import { safeHttps } from "../details";
+import { searchLinks } from "../availability";
+describe("onde está disponível", () => {
+  it("safeHttps só aceita https", () => {
+    expect(safeHttps("https://a.com/x")).toBe("https://a.com/x");
+    expect(safeHttps("http://a.com")).toBeUndefined();
+    expect(safeHttps("javascript:alert(1)")).toBeUndefined();
+    expect(safeHttps("data:text/html,x")).toBeUndefined();
+    expect(safeHttps("lixo")).toBeUndefined();
+    expect(safeHttps(undefined)).toBeUndefined();
+  });
+  it("TMDB: assinatura, aluguel, compra, grátis+anúncios e página do JustWatch (só Brasil)", () => {
+    const d = mapTmdbDetails({
+      "watch/providers": { results: {
+        BR: { link: "https://www.themoviedb.org/movie/1/watch?locale=BR", flatrate: [{ provider_name: "Max" }], rent: [{ provider_name: "Apple TV" }], buy: [{ provider_name: "Google Play" }], free: [{ provider_name: "Tubi" }], ads: [{ provider_name: "Pluto TV" }] },
+        US: { flatrate: [{ provider_name: "Hulu" }] },
+      } },
+    }, false);
+    expect(d.where).toMatchObject({ flatrate: ["Max"], rent: ["Apple TV"], buy: ["Google Play"], free: ["Tubi", "Pluto TV"], source: "JustWatch" });
+    expect(d.where?.pageUrl).toContain("themoviedb.org");
+    expect(JSON.stringify(d.where)).not.toContain("Hulu");
+  });
+  it("TMDB: sem provedores no Brasil não inventa nada", () => {
+    expect(mapTmdbDetails({ "watch/providers": { results: { BR: {} } } }, false).where).toBeUndefined();
+    expect(mapTmdbDetails({}, false).where).toBeUndefined();
+  });
+  it("AniList: só links de streaming https, sem repetir", () => {
+    const d = mapAniListDetails({ externalLinks: [
+      { site: "Crunchyroll", url: "https://crunchyroll.com/x", type: "STREAMING" },
+      { site: "Crunchyroll", url: "https://crunchyroll.com/y", type: "STREAMING" },
+      { site: "Site oficial", url: "https://oficial.jp", type: "INFO" },
+      { site: "Ruim", url: "http://inseguro.com", type: "STREAMING" },
+      { site: "Xss", url: "javascript:alert(1)", type: "STREAMING" },
+    ] });
+    expect(d.where?.links).toEqual([{ name: "Crunchyroll", url: "https://crunchyroll.com/x" }]);
+    expect(mapAniListDetails({ externalLinks: [] }).where).toBeUndefined();
+  });
+  it("IGDB: só lojas conhecidas", () => {
+    const d = mapIgdbDetails({ websites: [{ category: 13, url: "https://store.steampowered.com/app/1" }, { category: 1, url: "https://oficial.com" }, { category: 16, url: "http://epic.insegura" }, { category: 17, url: "https://gog.com/g" }] });
+    expect(d.where?.links.map((l) => l.name)).toEqual(["Steam", "GOG"]);
+  });
+  it("links de busca existem para todas as mídias e escapam o título", () => {
+    for (const m of ["anime", "filme", "manga", "livro", "jogo", "musica"] as const) expect(searchLinks(m, "A & B").length).toBeGreaterThan(0);
+    expect(searchLinks("jogo", "A & B")[0].url).toContain("A%20%26%20B");
+    expect(searchLinks("jogo", "   ")).toEqual([]);
+  });
+});

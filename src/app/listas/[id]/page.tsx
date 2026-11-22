@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { getItem } from "@/lib/recommend";
-import { deleteList, renameList, toggleInList, useHydrated, useLibrary } from "@/lib/store";
+import { deleteList, moveInList, renameList, toggleInList, useHydrated, useLibrary } from "@/lib/store";
 import { Cover, MediaTag } from "@/components/ui";
 
 export default function ListaPage() {
@@ -50,8 +50,9 @@ export default function ListaPage() {
       )}
 
       <ul style={{ listStyle: "none" }} className="mt16">
-        {items.map((item) => (
-          <li key={item.id} className="row" style={{ gap: 12, padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+        {items.map((item, idx) => (
+          <li key={item.id} className="row" style={{ gap: 12, padding: "8px 0", borderBottom: "1px solid var(--line)", alignItems: "center" }}>
+            <span className="muted" style={{ width: 22, textAlign: "right", fontWeight: 700 }} aria-hidden="true">{idx + 1}</span>
             <Link href={`/item/${encodeURIComponent(item.id)}`} className="row" style={{ gap: 12, flex: 1, minHeight: 64 }}>
               <Cover item={item} w={44} h={60} fs={11} />
               <span>
@@ -59,6 +60,10 @@ export default function ListaPage() {
                 <span className="row gap8" style={{ marginTop: 4 }}><MediaTag media={item.media} />{item.year && <span className="muted" style={{ fontSize: 12 }}>{item.year}</span>}</span>
               </span>
             </Link>
+            <span className="row" style={{ gap: 2 }}>
+              <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} disabled={idx === 0} onClick={() => moveInList(id, item.id, -1)} aria-label={`Subir ${item.title} para a posição ${idx}`}>↑</button>
+              <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} disabled={idx === items.length - 1} onClick={() => moveInList(id, item.id, 1)} aria-label={`Descer ${item.title} para a posição ${idx + 2}`}>↓</button>
+            </span>
             <button type="button" className="btn ghost small" style={{ width: "auto" }} onClick={() => toggleInList(id, item)} aria-label={`Tirar ${item.title} da lista`}>Tirar</button>
           </li>
         ))}

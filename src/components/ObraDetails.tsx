@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Details } from "@/lib/details";
+import type { Availability, Details } from "@/lib/details";
+import { searchLinks } from "@/lib/availability";
 import type { Item } from "@/lib/types";
 
 const MAKERS_LABEL = { filme: "Direção e criação", jogo: "Desenvolvimento", anime: "Estúdio e autoria", manga: "Autoria", livro: "Autoria", musica: "Artista" } as const;
@@ -39,6 +40,7 @@ export function ObraDetails({ item }: { item: Item }) {
       <section aria-label="Sobre a obra">
         <p className="label">Sobre</p>
         <p className="muted" style={{ fontSize: 14 }}>Não encontramos detalhes dessa obra agora.</p>
+        <Where item={item} />
       </section>
     );
   }
@@ -59,20 +61,65 @@ export function ObraDetails({ item }: { item: Item }) {
         {d.score && (
           <div className="mt8"><dt className="muted" style={{ fontSize: 12 }}>Nota em {d.score.source}</dt><dd>{String(d.score.value).replace(".", ",")} de 10</dd></div>
         )}
-        {d.providers && d.providers.length > 0 && (
-          <div className="mt8">
-            <dt className="muted" style={{ fontSize: 12 }}>Onde assistir no Brasil (assinatura)</dt>
-            <dd className="chips mt8">{d.providers.map((p) => <span key={p} className="vibe">{p}</span>)}</dd>
-          </div>
-        )}
         {d.similar && d.similar.length > 0 && (
           <div className="mt8"><dt className="muted" style={{ fontSize: 12 }}>Parecidos</dt><dd>{d.similar.join(", ")}</dd></div>
         )}
       </dl>
+      <Where item={item} where={d.where} providers={d.providers} />
       {d.trailer && (
         <a className="btn ghost small mt12" style={{ width: "auto", display: "inline-flex" }} href={d.trailer} target="_blank" rel="noopener noreferrer">
           Ver trailer no YouTube ↗
         </a>
+      )}
+    </section>
+  );
+}
+
+const GROUPS: { key: "flatrate" | "rent" | "buy" | "free"; label: string }[] = [
+  { key: "flatrate", label: "Assinatura" },
+  { key: "rent", label: "Aluguel" },
+  { key: "buy", label: "Compra" },
+  { key: "free", label: "Grátis (pode ter anúncios)" },
+];
+const SOURCE_NOTE: Record<Availability["source"], string> = {
+  JustWatch: "Disponibilidade no Brasil: dados do JustWatch, via TMDB.",
+  AniList: "Links de streaming informados pelo AniList.",
+  IGDB: "Lojas informadas pelo IGDB.",
+};
+
+/** Onde encontrar a obra. Quando a fonte não sabe, mostramos só links de busca, e dizemos isso. */
+function Where({ item, where, providers }: { item: Item; where?: Availability; providers?: string[] }) {
+  const searches = searchLinks(item.media, item.title);
+  const groups = where ? GROUPS.filter((g) => where[g.key].length > 0) : [];
+  const flat = where?.flatrate.length ? [] : (providers ?? []);
+  const known = groups.length > 0 || (where?.links.length ?? 0) > 0 || flat.length > 0;
+  return (
+    <section className="mt16" aria-label="Onde encontrar" data-testid="onde">
+      <p className="label">Onde encontrar</p>
+      {groups.map((g) => (
+        <div key={g.key} className="mt8" data-testid={`onde-${g.key}`}>
+          <p className="muted" style={{ fontSize: 12 }}>{g.label}</p>
+          <p className="chips mt8">{where![g.key].map((p) => <span key={p} className="vibe">{p}</span>)}</p>
+        </div>
+      ))}
+      {flat.length > 0 && <p className="chips mt8">{flat.map((p) => <span key={p} className="vibe">{p}</span>)}</p>}
+      {where && where.links.length > 0 && (
+        <p className="row gap8 mt8" style={{ flexWrap: "wrap" }} data-testid="onde-links">
+          {where.links.map((l) => <a key={l.name} className="btn ghost small" style={{ width: "auto" }} href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>)}
+        </p>
+      )}
+      {known && where && (
+        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+          {SOURCE_NOTE[where.source]}{where.pageUrl && <> <a href={where.pageUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>Ver tudo no JustWatch</a></>}
+          {" "}Catálogos mudam; confira no serviço.
+        </p>
+      )}
+      {!known && <p className="muted" style={{ fontSize: 14 }}>Ainda não sabemos onde está disponível. Procure em:</p>}
+      {searches.length > 0 && (
+        <p className="row gap8 mt8" style={{ flexWrap: "wrap", alignItems: "center" }} data-testid="onde-busca">
+          {known && <span className="muted" style={{ fontSize: 12 }}>Procurar em:</span>}
+          {searches.map((l) => <a key={l.name} className="chip" href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>)}
+        </p>
       )}
     </section>
   );

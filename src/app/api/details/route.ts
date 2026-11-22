@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
+import { findDetails } from "@/lib/sources";
 import { MEDIAS, type Media } from "@/lib/types";
 
 const isMedia = (m: string | null): m is Media => !!m && (MEDIAS as readonly string[]).includes(m);
-import { findDetails } from "@/lib/sources";
 
 export async function GET(req: Request) {
   const q = new URL(req.url).searchParams;

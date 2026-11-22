@@ -87,7 +87,7 @@ with sync_playwright() as p:
     bru.fill("input[aria-label='Buscar pessoas']", "ana")
     bru.wait_for_selector("[data-testid=resultados]")
     check("busca acha o perfil público", "@ana_dev" in bru.get_by_test_id("resultados").inner_text())
-    bru.get_by_role("button", name="Seguir Ana").click() if bru.get_by_role("button", name="Seguir Ana").count() else bru.get_by_role("button", name="Seguir ana_dev").click()
+    bru.locator("[data-testid=resultados]").get_by_role("button").first.click()
     bru.wait_for_selector("[data-testid=seguindo]")
     check("seguir coloca a pessoa em 'Quem você segue'", "ana_dev" in bru.get_by_test_id("seguindo").inner_text())
     bru.wait_for_selector("[data-testid=feed] li")
@@ -104,6 +104,13 @@ with sync_playwright() as p:
     check("afinidade calculada com obras em comum", "% de afinidade" in aff and "obras" in aff, aff)
     check("mostra o que os dois amaram", "Hades" in bru.locator("main").inner_text())
     check("botão mostra que já segue", bru.get_by_role("button", name="Seguindo").count() == 1)
+    bru.get_by_test_id("juntos").get_by_role("button", name="Sugerir").click()
+    bru.wait_for_selector("[data-testid=juntos-lista]")
+    jt = bru.get_by_test_id("juntos").inner_text()
+    check("ver algo juntos mostra sugestões", bru.locator("[data-testid=juntos-lista] li").count() >= 1, jt)
+    check("ver algo juntos não expõe títulos do outro como 'dele'", "segredo" not in jt)
+    bru.locator("[data-testid=juntos-lista] li button").first.click()
+    check("quero ver a partir das sugestões grava na biblioteca", bru.evaluate("() => Object.values(JSON.parse(localStorage.getItem('hobby:v1')).entries).some(e => e.status === 'quero')"))
 
     # ---------- resenha liberada, nota mudada, item removido ----------
     publish(ana, "ana_dev", "Gosto de histórias sombrias", reviews=True)

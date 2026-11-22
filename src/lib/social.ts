@@ -74,7 +74,7 @@ export interface ActivityRow {
   review: string | null;
 }
 
-const STATUSES: Status[] = ["quero", "andamento", "concluido", "abandonei"];
+const STATUSES: Status[] = ["quero", "andamento", "concluido", "abandonei", "pausei"];
 const isMedia = (m: unknown): m is Media => typeof m === "string" && (MEDIAS as string[]).includes(m);
 
 /** O que seria publicado hoje: os registros mais recentes (até 200), com resenha só se a pessoa liberou. */
@@ -199,6 +199,9 @@ export interface CommentRow {
   target_item: string;
   body: string;
   created_at: string;
+  /** resposta a outro comentário (um nível só) */
+  parent_id: string | null;
+  edited_at: string | null;
 }
 
 /** Texto pronto para enviar, ou o motivo de não poder (vazio, grande demais). */
@@ -212,7 +215,7 @@ export function checkComment(raw: string): { ok: true; body: string } | { ok: fa
 export function parseComment(raw: unknown): CommentRow | null {
   const r = raw as Record<string, unknown> | null;
   if (!r || typeof r.id !== "string" || typeof r.author_id !== "string" || typeof r.target_user !== "string" || typeof r.target_item !== "string" || typeof r.body !== "string") return null;
-  return { id: r.id, author_id: r.author_id, target_user: r.target_user, target_item: r.target_item, body: r.body.slice(0, COMMENT_MAX), created_at: String(r.created_at ?? "") };
+  return { id: r.id, author_id: r.author_id, target_user: r.target_user, target_item: r.target_item, body: r.body.slice(0, COMMENT_MAX), created_at: String(r.created_at ?? ""), parent_id: typeof r.parent_id === "string" ? r.parent_id : null, edited_at: typeof r.edited_at === "string" ? r.edited_at : null };
 }
 
 /** Chave de uma atividade (dono + obra), usada para contar comentários. */
@@ -222,4 +225,43 @@ export function countByThread(rows: Pick<CommentRow, "target_user" | "target_ite
   const m = new Map<string, number>();
   for (const r of rows) m.set(threadKey(r.target_user, r.target_item), (m.get(threadKey(r.target_user, r.target_item)) ?? 0) + 1);
   return m;
+}
+
+/* ------------------------- gente com gosto parecido ------------------------- */
+
+export interface TasteMatch {
+  userId: string;
+  /** obras que as duas pessoas registraram */
+  shared: number;
+  /** quantas dessas as duas avaliaram com notas próximas (até 1 estrela de diferença) */
+  agree: number;
+  score: number;
+}
+
+/**
+ * Quem registrou as mesmas obras que eu. `mine`: obra → minha nota (ou null). `rows`: registros dos outros.
+ * Precisa de pelo menos 2 obras em comum; concordar na nota pesa mais do que só ter visto.
+ */
+export function rankTasteMatches(
+  mine: ReadonlyMap<string, number | null>,
+  rows: readonly { user_id: string; item_id: string; rating: number | null }[],
+  opts: { min?: number; limit?: number } = {},
+): TasteMatch[] {
+  const min = opts.min ?? 2;
+  const by = new Map<string, { seen: Set<string>; agree: number }>();
+  for (const r of rows) {
+    if (!mine.has(r.item_id)) continue;
+    const g = by.get(r.user_id) ?? { seen: new Set<string>(), agree: 0 };
+    if (g.seen.has(r.item_id)) continue;
+    g.seen.add(r.item_id);
+    const m = mine.get(r.item_id);
+    if (m != null && r.rating != null && Math.abs(m - r.rating) <= 1) g.agree++;
+    by.set(r.user_id, g);
+  }
+  const out: TasteMatch[] = [];
+  for (const [userId, g] of by) {
+    if (g.seen.size < min) continue;
+    out.push({ userId, shared: g.seen.size, agree: g.agree, score: g.seen.size + g.agree });
+  }
+  return out.sort((a, b) => b.score - a.score || b.shared - a.shared || a.userId.localeCompare(b.userId)).slice(0, opts.limit ?? 5);
 }

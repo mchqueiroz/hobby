@@ -90,7 +90,7 @@ describe("buildFilmImport", () => {
     const r = buildFilmImport(films, [it1, it1, null, it2], 123);
     expect(r.items).toHaveLength(2);
     expect(r.entries[0]).toEqual({ itemId: "tmdb:movie:1", status: "concluido", rating: 5, at: 123 });
-    expect(r.counts).toEqual({ quero: 0, andamento: 0, concluido: 2, abandonei: 0 });
+    expect(r.counts).toEqual({ quero: 0, andamento: 0, concluido: 2, abandonei: 0, pausei: 0 });
     expect(r.missing).toBe(1);
     expect(r.withoutVibes).toBe(1);
   });

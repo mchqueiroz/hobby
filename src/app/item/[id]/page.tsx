@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { getItem, recommend } from "@/lib/recommend";
-import { dismiss, removeEntry, saveEntry, toggleInList, track, undismiss, undoLast, useHydrated, useLibrary } from "@/lib/store";
-import { STATUS_LABEL } from "@/lib/types";
+import { similarTo } from "@/lib/similar";
+import { cacheItem, dismiss, removeEntry, saveEntry, toggleInList, track, undismiss, undoLast, useHydrated, useLibrary } from "@/lib/store";
+import { MEDIA_LABEL, statusLabel, wantLabel } from "@/lib/types";
 import { Cover, MediaTag, Rating } from "@/components/ui";
 import { useShell } from "@/components/Shell";
 import { ObraTheme } from "@/components/ObraTheme";
@@ -25,6 +26,8 @@ export default function ItemPage() {
     () => (item && !entry ? recommend(lib, { pool: [item], count: 1, perMedia: 1 })[0] : undefined),
     [item, entry, lib],
   );
+
+  const similar = useMemo(() => (item ? similarTo(lib, item) : []), [item, lib]);
 
   if (!ready) return null;
   if (!item) {
@@ -57,7 +60,7 @@ export default function ItemPage() {
         <div className="card mt24">
           <p className="label" style={{ margin: 0 }}>Seu registro</p>
           <div className="row between mt8">
-            <strong>{STATUS_LABEL[entry.status]}</strong>
+            <strong>{statusLabel(entry.status, item.media)}</strong>
             <Rating value={entry.rating} size={16} />
           </div>
         </div>
@@ -97,6 +100,23 @@ export default function ItemPage() {
         ))}
       </div>
 
+      {similar.length > 0 && (
+        <section aria-labelledby="parecidos-t" data-testid="parecidos">
+          <p className="label" id="parecidos-t">Parecidos com esta</p>
+          <ul className="hscroll" style={{ listStyle: "none", padding: 0, gap: 12 }}>
+            {similar.map(({ item: s, shared }) => (
+              <li key={s.id} style={{ width: 104, flex: "0 0 auto", position: "relative" }}>
+                <Link href={`/item/${encodeURIComponent(s.id)}`} onClick={() => cacheItem(s)}>
+                  <Cover item={s} w={104} h={146} fs={11} />
+                  <strong style={{ display: "block", fontSize: 13, marginTop: 6 }}>{s.title}<span className="sr">, {MEDIA_LABEL[s.media]}</span></strong>
+                </Link>
+                <span className="muted" style={{ display: "block", fontSize: 11.5, marginTop: 2 }}>{shared.slice(0, 2).join(" · ")}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <p className="label">Listas</p>
       {Object.keys(lib.lists).length === 0 ? (
         <p className="muted" style={{ fontSize: 14 }}>Você ainda não tem listas. <Link href="/listas" style={{ textDecoration: "underline" }}>Criar uma</Link></p>
@@ -121,8 +141,8 @@ export default function ItemPage() {
             <button type="button" className="btn ghost small" onClick={() => {
               saveEntry(item, "quero");
               track("item_want");
-              toast(`${item.title}: Quero ver`, () => { undoLast(); });
-            }}>Quero ver</button>
+              toast(`${item.title}: ${wantLabel(item.media)}`, () => { undoLast(); });
+            }}>{wantLabel(item.media)}</button>
           )}
           {!entry && !dismissed && (
             <button type="button" className="btn ghost small" onClick={() => {

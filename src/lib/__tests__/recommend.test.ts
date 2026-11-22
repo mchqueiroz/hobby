@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SEED_BY_ID } from "../catalog";
 import { recommend, tasteProfile } from "../recommend";
+import type { Item } from "../types";
 import { EMPTY_LIBRARY, type Library, type Status } from "../types";
 
 const id = (media: string, slug: string) => `seed:${media}:${slug}`;
@@ -156,3 +157,75 @@ describe("v2 no app", () => {
     expect(ids).not.toContain("n7"); // humor leve não combina com o que ele gosta
   });
 });
+
+describe("recomendação: franquia, autor, explicação e aposta", () => {
+  const vibes = ["psicológico", "investigação", "sombrio", "mistério", "narrativa densa"];
+  const mk = (title: string, media: Item["media"], over: Partial<Item> = {}): Item => ({ id: `t:${media}:${title}`, title, media, vibes, source: "anilist", ...over });
+  const base = lib([[id("anime", "death-note"), "concluido", 5], [id("anime", "monster"), "concluido", 5]]);
+
+  it("não oferece continuação de algo que a pessoa já viu", () => {
+    const pool = [mk("Death Note: Relight", "anime"), mk("Monster Second Season", "anime"), mk("Outro Anime", "anime", { vibes: ["psicológico", "sombrio", "mistério"] })];
+    const titles = recommend(base, { pool, count: 10, perMedia: 10 }).map((r) => r.item.title);
+    expect(titles).toContain("Outro Anime");
+    expect(titles).not.toContain("Death Note: Relight");
+    expect(titles).not.toContain("Monster Second Season");
+  });
+
+  it("na lista de quero ver, a continuação continua aparecendo (foi a pessoa que pôs lá)", () => {
+    const sequel = mk("Death Note: Relight", "anime");
+    const withWant: Library = { ...base, items: { [sequel.id]: sequel }, entries: { ...base.entries, [sequel.id]: { itemId: sequel.id, status: "quero", at: 0 } } };
+    expect(recommend(withWant, { fromWatchlist: true }).map((r) => r.item.id)).toContain(sequel.id);
+  });
+
+  it("outro álbum do mesmo artista sobe, e o motivo diz isso", () => {
+    const mine = lib([[id("musica", "ok-computer"), "concluido", 5], [id("anime", "death-note"), "concluido", 4]]);
+    const kidA = mk("Kid A", "musica", { vibes: ["dançante"], author: "Radiohead" });
+    const outro = mk("Outro Álbum", "musica", { vibes: ["dançante"], author: "Fulano" });
+    const r = recommend(mine, { pool: [kidA, outro], count: 5, perMedia: 5 });
+    expect(r[0].item.title).toBe("Kid A");
+    expect(r[0].reason).toBe("Porque você deu 5★ a OK Computer (álbum), do mesmo artista.");
+    expect(r.map((x) => x.item.title)).not.toContain("Outro Álbum");
+  });
+
+  it("nota baixa para um autor pesa contra os outros livros dele", () => {
+    const mine = lib([[id("livro", "1984"), "concluido", 1], [id("livro", "o-hobbit"), "concluido", 5]]);
+    const r = recommend(mine, { pool: SEED_BOOKS_BY_ORWELL_AND_OTHERS(), count: 5, perMedia: 5 }).map((x) => x.item.title);
+    expect(r[0]).toBe("Livro de Tolkien");
+    // o de Orwell pode até aparecer, mas nunca antes
+    expect(r.indexOf("Livro de Orwell") === -1 || r.indexOf("Livro de Orwell") > 0).toBe(true);
+  });
+
+  it("cita duas obras quando as duas pesaram quase igual, sem repetir o verbo", () => {
+    const withMany = recommend(base, { pool: [mk("Parecido", "anime")], count: 3 });
+    expect(withMany[0].also).toBeDefined();
+    expect(withMany[0].reason).toMatch(/^Porque você deu 5★ a .* \(anime\) e 5★ a .* \(anime\): este também é /);
+  });
+
+  it("com a aposta ligada, a última sugestão foge das vibes de sempre; desligada, ninguém é aposta", () => {
+    const fan = lib([
+      [id("anime", "death-note"), "concluido", 5], [id("anime", "monster"), "concluido", 5], [id("anime", "cowboy-bebop"), "concluido", 4.5],
+      [id("filme", "cidade-de-deus"), "concluido", 5], [id("livro", "1984"), "concluido", 5], [id("musica", "ok-computer"), "concluido", 5],
+    ]);
+    const plain = recommend(fan, { count: 5 });
+    const withBet = recommend(fan, { count: 5, bet: true });
+    expect(plain.some((r) => r.bet)).toBe(false);
+    expect(withBet).toHaveLength(plain.length);
+    expect(withBet.filter((r) => r.bet)).toHaveLength(1);
+    expect(withBet[withBet.length - 1].bet).toBe(true);
+    expect(withBet.slice(0, -1).map((r) => r.item.id)).toEqual(plain.slice(0, -1).map((r) => r.item.id));
+  });
+
+  it("nunca repete a mesma obra por causa da aposta", () => {
+    const fan = lib([[id("anime", "death-note"), "concluido", 5], [id("anime", "monster"), "concluido", 5], [id("filme", "cidade-de-deus"), "concluido", 5], [id("livro", "1984"), "concluido", 5]]);
+    const ids = recommend(fan, { count: 5, bet: true }).map((r) => r.item.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+});
+
+function SEED_BOOKS_BY_ORWELL_AND_OTHERS(): Item[] {
+  const v = ["fantasia", "aventura", "jornada épica"];
+  return [
+    { id: "t:livro:a", title: "Livro de Orwell", media: "livro", vibes: v, author: "George Orwell", source: "openlibrary" },
+    { id: "t:livro:b", title: "Livro de Tolkien", media: "livro", vibes: v, author: "J. R. R. Tolkien", source: "openlibrary" },
+  ];
+}

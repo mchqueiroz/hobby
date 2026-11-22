@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { STATUS_LABEL, type Item, type Status } from "@/lib/types";
+import { STATUS_LABEL, statusLabel, type Item, type Status } from "@/lib/types";
 import { fmtRating } from "@/lib/recommend";
 import { mergeResults, searchItems } from "@/lib/search";
 import { MAX_REVIEW, saveEntry, track, undoLast, useLibrary } from "@/lib/store";
 import { Chips, Cover, MediaTag, StarInput } from "./ui";
 import { useShell } from "./Shell";
 
-const STATUS_OPTIONS = (Object.keys(STATUS_LABEL) as Status[]).map((s) => ({ value: s, label: STATUS_LABEL[s] }));
 
 /**
  * Registro rápido. O caminho curto são dois toques: escolher o item e tocar na nota.
@@ -76,7 +75,7 @@ export function RegisterSheet({ initial, onClose }: { initial?: Item; onClose: (
     const ms = Math.round(performance.now() - t0.current);
     saveEntry(item, status, rating, review);
     track("register_save", { ms, taps: taps.current, status, rated: rating !== undefined, reviewed: review.trim().length > 0, from: initial ? "item" : "tab" });
-    toast(`${item.title}: ${rating !== undefined ? `${fmtRating(rating)}★` : STATUS_LABEL[status]}`, () => {
+    toast(`${item.title}: ${rating !== undefined ? `${fmtRating(rating)}★` : statusLabel(status, item.media)}`, () => {
       undoLast();
       track("register_undo");
     });
@@ -131,7 +130,7 @@ export function RegisterSheet({ initial, onClose }: { initial?: Item; onClose: (
               </div>
             </div>
             <p className="label">Status</p>
-            <Chips label="Status" options={STATUS_OPTIONS} value={status} onChange={(s) => { taps.current += 1; setStatus(s); }} />
+            <Chips label="Status" options={(Object.keys(STATUS_LABEL) as Status[]).map((s) => ({ value: s, label: statusLabel(s, item.media) }))} value={status} onChange={(s) => { taps.current += 1; setStatus(s); }} />
             {writing || review ? (
               <>
                 <label className="label" htmlFor="resenha-registro">Sua resenha (opcional)</label>

@@ -23,7 +23,7 @@ const DATA = { data: { MediaListCollection: { lists: [
 ] } } };
 
 const EVENTS = [];
-const TABLES = { profiles: [], activity: [], follows: [], comments: [] }; const T_PROFILES = () => TABLES.profiles;
+const TABLES = { profiles: [], activity: [], follows: [], comments: [], blocks: [], reports: [], likes: [] }; const T_PROFILES = () => TABLES.profiles;
 const USERS = new Map(), LIBS = new Map(), SAVES = [], DELETED = [], RECOVER = [], FAIL = { sync: false };
 const AUTH = { tmdb: "Bearer tmdbtoken", igdbId: "cid", igdbTok: "Bearer tok" };
 const TMDB_MOVIES = [
@@ -114,7 +114,7 @@ http.createServer((req, res) => {
       }
 
       // ---- tabelas sociais, com as mesmas regras (RLS) e restrições do banco real ----
-      const TBL = url.pathname.match(/^\/rest\/v1\/(profiles|activity|follows|comments)$/)?.[1];
+      const TBL = url.pathname.match(/^\/rest\/v1\/(profiles|activity|follows|comments|blocks|reports|likes)$/)?.[1];
       if (TBL) {
         const me = authUser();
         const uid = me?.id;
@@ -122,8 +122,13 @@ http.createServer((req, res) => {
         const isPublic = (id) => T_PROFILES().find((r) => r.id === id)?.is_public;
         const visible = (r) => TBL === "profiles" ? (r.is_public || r.id === uid)
           : TBL === "activity" ? (r.user_id === uid || isPublic(r.user_id))
-          : TBL === "comments" ? (r.author_id === uid || r.target_user === uid || isPublic(r.target_user))
-          : r.follower_id === uid;
+          : TBL === "comments" ? ((r.author_id === uid || r.target_user === uid || isPublic(r.target_user))
+              && (!r.hidden || r.author_id === uid || r.target_user === uid)
+              && !TABLES.blocks.some((x) => x.blocker === uid && x.blocked === r.author_id))
+          : TBL === "likes" ? ((r.user_id === uid || r.target_user === uid || isPublic(r.target_user)) && !TABLES.blocks.some((x) => x.blocker === uid && x.blocked === r.user_id))
+          : TBL === "blocks" ? r.blocker === uid
+          : TBL === "reports" ? r.reporter === uid
+          : (r.follower_id === uid || r.followee_id === uid);
         if (!me && TBL === "follows") return send(401, { code: "42501", message: "permission denied for table follows" });
         const params = [...url.searchParams.entries()].filter(([k]) => !["select", "order", "limit", "on_conflict", "or"].includes(k));
         const match = (r) => params.every(([k, v]) => {
@@ -135,7 +140,7 @@ http.createServer((req, res) => {
           const or = url.searchParams.get("or"); if (!or) return true;
           return or.slice(1, -1).split(",").some((c) => { const [col, op, ...val] = c.split("."); const pat = val.join(".").replace(/%/g, ""); return op === "ilike" && String(r[col] ?? "").toLowerCase().includes(pat.toLowerCase()); });
         })();
-        const keyOf = (r) => TBL === "profiles" ? r.id : TBL === "activity" ? `${r.user_id}|${r.item_id}` : TBL === "comments" ? r.id : `${r.follower_id}|${r.followee_id}`;
+        const keyOf = (r) => TBL === "profiles" ? r.id : TBL === "activity" ? `${r.user_id}|${r.item_id}` : TBL === "comments" || TBL === "reports" ? r.id : TBL === "likes" ? `${r.user_id}|${r.target_user}|${r.target_item}` : TBL === "blocks" ? `${r.blocker}|${r.blocked}` : `${r.follower_id}|${r.followee_id}`;
         const checkProfile = (r) => {
           if (!/^[a-z0-9_]{3,20}$/.test(r.handle ?? "") || ["admin","hobby","suporte","api","perfil","entrar","conta","comunidade","u","root","support"].includes(r.handle)) return "23514";
           if ((r.bio ?? "").length > 160 || (r.name ?? "").length > 40) return "23514";
@@ -166,18 +171,40 @@ http.createServer((req, res) => {
               if (r.review && !pr.share_reviews) return send(403, { code: "42501", message: "new row violates row-level security policy for table activity" });
               r.updated_at = now;
             }
+            if (TBL === "likes") {
+              const pr = T_PROFILES().find((x) => x.id === uid);
+              if (r.user_id !== uid || r.target_user === uid || !pr?.is_public || !isPublic(r.target_user) || TABLES.blocks.some((x) => x.blocker === r.target_user && x.blocked === uid)) return send(403, { code: "42501", message: "new row violates row-level security policy for table likes" });
+              if (!TABLES.activity.some((a) => a.user_id === r.target_user && a.item_id === r.target_item)) return send(409, { code: "23503", message: "foreign key" });
+              r.created_at = now;
+            }
             if (TBL === "comments") {
               const pr = T_PROFILES().find((x) => x.id === uid);
+              if (TABLES.blocks.some((x) => x.blocker === r.target_user && x.blocked === uid)) return send(403, { code: "42501", message: "new row violates row-level security policy for table comments" });
               if (r.author_id !== uid || !pr?.is_public || !isPublic(r.target_user)) return send(403, { code: "42501", message: "new row violates row-level security policy for table comments" });
               const body = String(r.body ?? "").trim();
               if (body.length < 1 || body.length > 500) return send(400, { code: "23514", message: "check constraint" });
               if (!TABLES.activity.some((a) => a.user_id === r.target_user && a.item_id === r.target_item)) return send(409, { code: "23503", message: "foreign key" });
               const recent = T.filter((c) => c.author_id === uid && Date.now() - Date.parse(c.created_at) < 60000).length;
               if (recent >= 10) return send(400, { code: "54000", message: "muitos comentários em pouco tempo" });
+              if (r.parent_id) { const par = T.find((c) => c.id === r.parent_id); if (!par || par.parent_id || par.target_user !== r.target_user || par.target_item !== r.target_item) return send(400, { code: "23514", message: "resposta inválida" }); }
               r.id = `c-${T.length + 1}-${Math.random().toString(36).slice(2, 8)}`; r.created_at = now;
             }
+            if (TBL === "blocks") return send(403, { code: "42501", message: "permission denied for table blocks" });
+            if (TBL === "reports") {
+              const c = TABLES.comments.find((x) => x.id === r.comment_id);
+              if (r.reporter !== uid || !c || c.author_id === uid) return send(403, { code: "42501", message: "new row violates row-level security policy for table reports" });
+              if (!["spam", "ofensivo", "outro"].includes(r.reason)) return send(400, { code: "23514", message: "check constraint" });
+              if (T.some((x) => x.reporter === uid && x.comment_id === r.comment_id)) return send(409, { code: "23505", message: "duplicate" });
+              if (T.filter((x) => x.reporter === uid && Date.now() - Date.parse(x.created_at) < 3600000).length >= 20) return send(400, { code: "54000", message: "muitas denúncias" });
+              r.id = `r-${T.length + 1}`; r.created_at = now;
+              T.push(r);
+              if (new Set(T.filter((x) => x.comment_id === r.comment_id).map((x) => x.reporter)).size >= 3) c.hidden = true;
+              continue;
+            }
             if (TBL === "follows") {
+              if (TABLES.blocks.some((x) => x.blocker === r.followee_id && x.blocked === uid)) return send(403, { code: "42501", message: "new row violates row-level security policy for table follows" });
               if (r.follower_id !== uid || !isPublic(r.followee_id) || r.follower_id === r.followee_id) return send(403, { code: "42501", message: "new row violates row-level security policy for table follows" });
+              r.created_at = now;
             }
             if (TBL === "profiles") { const full = { is_public: false, share_reviews: false, bio: "", ...r, updated_at: now }; const c = checkProfile(full); if (c) return send(c === "23505" ? 409 : 400, { code: c, message: "constraint" }); Object.assign(r, full); }
             const i = T.findIndex((o) => keyOf(o) === keyOf(r));
@@ -186,15 +213,21 @@ http.createServer((req, res) => {
           res.statusCode = 201; return res.end();
         }
         if (req.method === "PATCH") {
+          if (TBL === "comments") {
+            const bodyTxt = String(b.body ?? "").trim();
+            if (b.body !== undefined && (bodyTxt.length < 1 || bodyTxt.length > 500)) return send(400, { code: "23514", message: "check constraint" });
+            for (const r of T.filter((c) => c.author_id === uid && match(c))) { if (b.body !== undefined) r.body = b.body; if (b.edited_at) r.edited_at = b.edited_at; }
+            res.statusCode = 204; return res.end();
+          }
           const mine = T.filter((r) => (TBL === "profiles" ? r.id === uid : r.user_id === uid) && match(r));
           for (const r of mine) Object.assign(r, b, { updated_at: now });
           res.statusCode = 204; return res.end();
         }
         if (req.method === "DELETE") {
-          const own = (r) => (TBL === "profiles" ? r.id === uid : TBL === "activity" ? r.user_id === uid : TBL === "comments" ? (r.author_id === uid || r.target_user === uid) : r.follower_id === uid);
+          const own = (r) => (TBL === "profiles" ? r.id === uid : TBL === "activity" ? r.user_id === uid : TBL === "comments" ? (r.author_id === uid || r.target_user === uid) : TBL === "blocks" ? r.blocker === uid : TBL === "reports" ? false : TBL === "likes" ? r.user_id === uid : r.follower_id === uid);
           for (let i = T.length - 1; i >= 0; i--) if (own(T[i]) && match(T[i])) {
             const gone = T.splice(i, 1)[0];
-            if (TBL === "activity") TABLES.comments = TABLES.comments.filter((c) => !(c.target_user === gone.user_id && c.target_item === gone.item_id)); // ON DELETE CASCADE
+            if (TBL === "activity") { TABLES.comments = TABLES.comments.filter((c) => !(c.target_user === gone.user_id && c.target_item === gone.item_id)); TABLES.likes = TABLES.likes.filter((l) => !(l.target_user === gone.user_id && l.target_item === gone.item_id)); } // ON DELETE CASCADE
           }
           res.statusCode = 204; return res.end();
         }
@@ -208,10 +241,37 @@ http.createServer((req, res) => {
         if (!row || row.rev !== b.p_expected) return send(200, null);
         row.data = b.p_data; row.rev += 1; return send(200, row.rev);
       }
+      const ADMINS = ["admin@ex.com"];
+      if (url.pathname === "/rest/v1/rpc/is_admin") { const u = authUser(); if (!u) return send(401, { message: "JWT" }); return send(200, ADMINS.includes(u.email)); }
+      if (url.pathname === "/rest/v1/rpc/admin_reports") {
+        const u = authUser(); if (!u) return send(401, { message: "JWT" });
+        if (!ADMINS.includes(u.email)) return send(403, { code: "42501", message: "não autorizado" });
+        const out = TABLES.comments.filter((c) => TABLES.reports.some((r) => r.comment_id === c.id)).map((c) => {
+          const rs = TABLES.reports.filter((r) => r.comment_id === c.id);
+          return { comment_id: c.id, body: c.body, author_id: c.author_id, author_handle: T_PROFILES().find((p) => p.id === c.author_id)?.handle ?? null, target_user: c.target_user, target_item: c.target_item, hidden: !!c.hidden, reports: rs.length, reasons: [...new Set(rs.map((r) => r.reason))], last_report: rs[rs.length - 1].created_at };
+        }).sort((a, b) => b.reports - a.reports);
+        return send(200, out);
+      }
+      if (url.pathname === "/rest/v1/rpc/admin_moderate") {
+        const u = authUser(); if (!u) return send(401, { message: "JWT" });
+        if (!ADMINS.includes(u.email)) return send(403, { code: "42501", message: "não autorizado" });
+        if (b.p_action === "hide") TABLES.comments.forEach((c) => { if (c.id === b.p_comment) c.hidden = true; });
+        else if (b.p_action === "restore") { TABLES.comments.forEach((c) => { if (c.id === b.p_comment) c.hidden = false; }); TABLES.reports = TABLES.reports.filter((r) => r.comment_id !== b.p_comment); }
+        else if (b.p_action === "delete") { TABLES.comments = TABLES.comments.filter((c) => c.id !== b.p_comment); TABLES.reports = TABLES.reports.filter((r) => r.comment_id !== b.p_comment); }
+        else return send(400, { code: "22023", message: "ação inválida" });
+        res.statusCode = 204; return res.end();
+      }
+      if (url.pathname === "/rest/v1/rpc/block_user") {
+        const u = authUser(); if (!u) return send(401, { message: "JWT" });
+        if (!b.p_user || b.p_user === u.id) return send(400, { code: "22023", message: "alvo inválido" });
+        if (!TABLES.blocks.some((x) => x.blocker === u.id && x.blocked === b.p_user)) TABLES.blocks.push({ blocker: u.id, blocked: b.p_user, created_at: new Date().toISOString() });
+        TABLES.follows = TABLES.follows.filter((f) => !((f.follower_id === u.id && f.followee_id === b.p_user) || (f.follower_id === b.p_user && f.followee_id === u.id)));
+        res.statusCode = 204; return res.end();
+      }
       if (url.pathname === "/rest/v1/rpc/delete_my_account") {
         const u = authUser(); if (!u) return send(401, { message: "JWT" });
         LIBS.delete(u.id); USERS.delete(u.email);
-        for (const t of ["profiles", "activity", "follows", "comments"]) TABLES[t] = TABLES[t].filter((r) => ![r.id, r.user_id, r.follower_id, r.followee_id, r.author_id, r.target_user].includes(u.id)); DELETED.push(u.email); res.statusCode = 204; return res.end();
+        for (const t of ["profiles", "activity", "follows", "comments", "blocks", "reports", "likes"]) TABLES[t] = TABLES[t].filter((r) => ![r.id, r.user_id, r.follower_id, r.followee_id, r.author_id, r.target_user, r.blocker, r.blocked, r.reporter].includes(u.id)); DELETED.push(u.email); res.statusCode = 204; return res.end();
       }
     }
     // controles de teste
@@ -244,18 +304,19 @@ http.createServer((req, res) => {
         return send(200, { results: M[q] ? [M[q]] : [] });
       }
       if (url.pathname === "/3/movie/438631") return send(200, {
+        release_date: new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10),
         overview: "Um jovem herdeiro viaja ao planeta deserto Arrakis.", runtime: 155, vote_average: 8.1, vote_count: 9000,
         genres: [{ name: "Ficção científica" }, { name: "Aventura" }],
         credits: { cast: [{ name: "Timothée Chalamet" }, { name: "Zendaya" }], crew: [{ name: "Denis Villeneuve", job: "Director" }] },
         videos: { results: [{ site: "YouTube", type: "Trailer", key: "duneTrailer1", official: true }] },
-        "watch/providers": { results: { BR: { flatrate: [{ provider_name: "Max" }] } } },
+        "watch/providers": { results: { BR: { link: "https://www.themoviedb.org/movie/438631/watch?locale=BR", flatrate: [{ provider_name: "Max" }], rent: [{ provider_name: "Apple TV" }], buy: [{ provider_name: "Google Play Filmes" }] } } },
       });
       if (url.pathname === "/3/discover/movie") return send(200, { results: DISC_MOVIE });
       if (url.pathname === "/3/discover/tv") return send(200, { results: DISC_TV });
     }
     if (url.pathname === "/v4/games") {
       if (req.headers["client-id"] !== AUTH.igdbId || req.headers.authorization !== AUTH.igdbTok) return send(401, {});
-      if (/summary, total_rating/.test(body)) return send(200, !/hades/i.test(body) ? [] : [{ summary: "Fuja do submundo grego.", total_rating: 91, total_rating_count: 200, platforms: [{ name: "PC" }], genres: [{ name: "Indie" }], involved_companies: [{ developer: true, company: { name: "Supergiant Games" } }], videos: [{ video_id: "hadesVid123" }], similar_games: [{ name: "Dead Cells" }] }]);
+      if (/summary, first_release_date, total_rating/.test(body)) return send(200, !/hades/i.test(body) ? [] : [{ first_release_date: Math.floor(Date.now() / 1000) + 20 * 86400, summary: "Fuja do submundo grego.", total_rating: 91, total_rating_count: 200, platforms: [{ name: "PC" }], websites: [{ category: 13, url: "https://store.steampowered.com/app/1145360" }, { category: 1, url: "https://oficial.example" }], genres: [{ name: "Indie" }], involved_companies: [{ developer: true, company: { name: "Supergiant Games" } }], videos: [{ video_id: "hadesVid123" }], similar_games: [{ name: "Dead Cells" }] }]);
       if (/hades/i.test(body)) return send(200, [{ id: 7, name: "Hades", cover: { image_id: "hadescover" }, genres: [], themes: [] }]);
       return send(200, body.startsWith("search") ? (/dune|elden/i.test(body) ? IGDB_SEARCH : []) : IGDB_DISC);
     }
@@ -277,7 +338,7 @@ http.createServer((req, res) => {
     const parsed = JSON.parse(body || "{}");
     const v = parsed.variables ?? {};
     if (v.ids !== undefined) return send(200, { data: { Page: { media: ENTRIES.filter((e) => v.ids.includes(e.media.id)).map((e) => ({ ...e.media, idMal: e.media.id })) } } });
-    if ((parsed.query ?? "").includes("Media(")) return send(200, { data: { Media: { description: "Um estudante acha um caderno.<br>Ele muda o mundo.", format: "TV", episodes: 37, averageScore: 85, trailer: { id: "dnTrailer12", site: "youtube" }, studios: { nodes: [{ name: "Madhouse", isAnimationStudio: true }] }, recommendations: { nodes: [] } } } });
+    if ((parsed.query ?? "").includes("Media(")) return send(200, { data: { Media: { nextAiringEpisode: { airingAt: Math.floor(Date.now() / 1000) + 2 * 86400, episode: 5 }, description: "Um estudante acha um caderno.<br>Ele muda o mundo.", format: "TV", episodes: 37, averageScore: 85, trailer: { id: "dnTrailer12", site: "youtube" }, studios: { nodes: [{ name: "Madhouse", isAnimationStudio: true }] }, recommendations: { nodes: [] } } } });
     const isManga = (parsed.query ?? "").includes("type: MANGA");
     if (v.q !== undefined) return send(200, { data: { Page: { media: isManga ? (/dune|pluto|mock/i.test(v.q) ? AL_MANGA_SEARCH : []) : /dune|psycho/i.test(v.q) ? AL_SEARCH : [] } } });
     if (v.g !== undefined) return send(200, { data: { Page: { media: isManga ? AL_MANGA_DISC : AL_DISC } } });

@@ -22,7 +22,7 @@ export interface Stats {
 
 export function computeStats(lib: Library, now = Date.now()): Stats {
   const year = new Date(now).getFullYear();
-  const byStatus: Record<Status, number> = { quero: 0, andamento: 0, concluido: 0, abandonei: 0 };
+  const byStatus: Record<Status, number> = { quero: 0, andamento: 0, concluido: 0, abandonei: 0, pausei: 0 };
   const byMedia = perMedia(() => 0);
   const sums = perMedia(() => ({ s: 0, n: 0 }));
   const histogram = new Array(10).fill(0) as number[];
@@ -97,4 +97,53 @@ export function dateToInput(ms?: number): string {
   if (!ms) return "";
   const d = new Date(ms);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Dia local como número inteiro (independe do horário), para comparar dias seguidos. */
+const dayNum = (ms: number) => {
+  const d = new Date(ms);
+  return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 86_400_000);
+};
+
+export interface Streak {
+  /** dias seguidos com algum registro, contando até hoje (ou até ontem, se hoje ainda não teve) */
+  current: number;
+  best: number;
+  today: boolean;
+}
+
+/** Sequência de dias com ao menos um registro com data (fora "quero ver"). Hoje ainda sem registro não quebra a sequência de ontem. */
+export function dayStreak(lib: Library, now = Date.now()): Streak {
+  const days = new Set<number>();
+  for (const e of Object.values(lib.entries)) {
+    const d = effectiveDate(e);
+    // pôr algo em "quero ver" é intenção, não atividade: não mantém a sequência
+    if (e.status !== "quero" && d > 0 && getItem(lib, e.itemId)) days.add(dayNum(d));
+  }
+  const today = dayNum(now);
+  let best = 0, run = 0, prev = -Infinity;
+  for (const d of [...days].sort((a, b) => a - b)) {
+    run = d === prev + 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+    prev = d;
+  }
+  let cur = 0;
+  for (let d = days.has(today) ? today : today - 1; days.has(d); d--) cur++;
+  return { current: cur, best, today: days.has(today) };
+}
+
+export interface HeatDay { day: number; count: number; future: boolean; }
+
+/** Contagem de registros por dia nas últimas `weeks` semanas, em colunas de domingo a sábado (a última coluna é a semana atual). */
+export function heatmap(lib: Library, weeks = 20, now = Date.now()): HeatDay[][] {
+  const counts = new Map<number, number>();
+  for (const e of Object.values(lib.entries)) {
+    const d = effectiveDate(e);
+    if (e.status !== "quero" && d > 0 && getItem(lib, e.itemId)) counts.set(dayNum(d), (counts.get(dayNum(d)) ?? 0) + 1);
+  }
+  const today = dayNum(now);
+  const dow = new Date(now).getDay(); // 0 = domingo
+  const start = today - dow - (weeks - 1) * 7;
+  return Array.from({ length: weeks }, (_, w) =>
+    Array.from({ length: 7 }, (_, i) => { const day = start + w * 7 + i; return { day, count: counts.get(day) ?? 0, future: day > today }; }));
 }

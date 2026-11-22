@@ -110,19 +110,19 @@ const MANGAS: Row[] = [
 ];
 
 const LIVROS: Row[] = [
-  ["1984", 1949, ["político", "futurista", "sombrio", "filosófico", "ficção científica"]],
-  ["O Hobbit", 1937, ["fantasia", "aventura", "jornada épica"]],
-  ["Crime e Castigo", 1866, ["psicológico", "crime", "filosófico", "drama humano", "sombrio"]],
-  ["O Nome da Rosa", 1980, ["mistério", "investigação", "filosófico", "narrativa densa"]],
-  ["Dom Casmurro", 1899, ["drama humano", "melancólico", "romance", "narrativa densa"], true],
-  ["Ensaio sobre a Cegueira", 1995, ["sobrevivência", "sombrio", "drama humano", "político", "filosófico"]],
-  ["Grande Sertão: Veredas", 1956, ["jornada épica", "filosófico", "narrativa densa", "drama humano"], true],
-  ["O Pequeno Príncipe", 1943, ["filosófico", "família", "melancólico", "aventura"]],
-  ["Neuromancer", 1984, ["ficção científica", "futurista", "noir", "crime", "urbano"]],
-  ["Harry Potter e a Pedra Filosofal", 1997, ["fantasia", "aventura", "coming of age", "família", "mistério"]],
-  ["A Revolução dos Bichos", 1945, ["político", "sombrio", "filosófico"]],
-  ["Cem Anos de Solidão", 1967, ["fantasia", "família", "drama humano", "narrativa densa", "melancólico"]],
-  ["O Alienista", 1882, ["psicológico", "político", "filosófico", "humor leve"], true],
+  ["1984", 1949, ["político", "futurista", "sombrio", "filosófico", "ficção científica"], false, "George Orwell"],
+  ["O Hobbit", 1937, ["fantasia", "aventura", "jornada épica"], false, "J. R. R. Tolkien"],
+  ["Crime e Castigo", 1866, ["psicológico", "crime", "filosófico", "drama humano", "sombrio"], false, "Fiódor Dostoiévski"],
+  ["O Nome da Rosa", 1980, ["mistério", "investigação", "filosófico", "narrativa densa"], false, "Umberto Eco"],
+  ["Dom Casmurro", 1899, ["drama humano", "melancólico", "romance", "narrativa densa"], true, "Machado de Assis"],
+  ["Ensaio sobre a Cegueira", 1995, ["sobrevivência", "sombrio", "drama humano", "político", "filosófico"], false, "José Saramago"],
+  ["Grande Sertão: Veredas", 1956, ["jornada épica", "filosófico", "narrativa densa", "drama humano"], true, "João Guimarães Rosa"],
+  ["O Pequeno Príncipe", 1943, ["filosófico", "família", "melancólico", "aventura"], false, "Antoine de Saint-Exupéry"],
+  ["Neuromancer", 1984, ["ficção científica", "futurista", "noir", "crime", "urbano"], false, "William Gibson"],
+  ["Harry Potter e a Pedra Filosofal", 1997, ["fantasia", "aventura", "coming of age", "família", "mistério"], false, "J. K. Rowling"],
+  ["A Revolução dos Bichos", 1945, ["político", "sombrio", "filosófico"], false, "George Orwell"],
+  ["Cem Anos de Solidão", 1967, ["fantasia", "família", "drama humano", "narrativa densa", "melancólico"], false, "Gabriel García Márquez"],
+  ["O Alienista", 1882, ["psicológico", "político", "filosófico", "humor leve"], true, "Machado de Assis"],
 ];
 
 const MUSICAS: Row[] = [
