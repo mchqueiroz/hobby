@@ -82,6 +82,7 @@ http.createServer((req, res) => {
         const t = (req.headers.authorization ?? "").replace("Bearer ", "");
         try { const sub = JSON.parse(Buffer.from(t.split(".")[1], "base64url").toString()).sub; return [...USERS.values()].find((u) => u.id === sub); } catch { return undefined; }
       };
+      if (url.pathname === "/auth/v1/settings") return send(200, { external: { email: true, google: false, apple: false }, disable_signup: false, mailer_autoconfirm: false });
       if (url.pathname === "/auth/v1/signup") {
         const email = String(b.email).toLowerCase();
         if (String(b.password ?? "").length < 8) return send(422, { code: 422, error_code: "weak_password", msg: "Password should be at least 8 characters." });

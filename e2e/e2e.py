@@ -14,8 +14,9 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={"width": 390, "height": 844}, device_scale_factor=2, locale="pt-BR")
     pg = ctx.new_page()
     errors, bad = [], []
-    pg.on("console", lambda m: errors.append(m.text) if m.type == "error" and not m.text.startswith("Failed to load resource") else None)
-    pg.on("response", lambda r: bad.append(f"{r.status} {r.url}") if r.status >= 400 and "/api/anilist" not in r.url else None)
+    # capas do mock apontam para CDNs reais com arquivos inventados: 404/CORS delas não é falha do app
+    pg.on("console", lambda m: errors.append(m.text) if m.type == "error" and not m.text.startswith("Failed to load resource") and not m.text.startswith("Access to image at") else None)
+    pg.on("response", lambda r: bad.append(f"{r.status} {r.url}") if r.status >= 400 and "/api/anilist" not in r.url and r.url.startswith(("http://localhost", "http://127.0.0.1")) else None)
     pg.on("pageerror", lambda e: errors.append(str(e)))
 
     # 1. entrada vazia mostra a apresentação, e o botão leva para importar

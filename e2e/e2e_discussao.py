@@ -61,6 +61,9 @@ with sync_playwright() as p:
     check("feed mostra a resenha da Ana", "Obra-prima" in bru.get_by_test_id("feed").inner_text())
     check("botão de comentários começa com 0", bru.get_by_test_id("abrir-comentarios").first.inner_text().strip().endswith("0"))
     open_thread(bru)
+    # a conversa mostra "Carregando…" antes de chegar a lista vazia
+    try: bru.get_by_test_id("conversa").get_by_text("Ninguém comentou").wait_for(timeout=5000)
+    except Exception: pass
     check("conversa vazia convida a comentar", "Ninguém comentou" in bru.get_by_test_id("conversa").inner_text())
     check("comentário vazio não envia", bru.locator("[data-testid=conversa]").get_by_role("button", name="Comentar").is_disabled())
     bru.locator("[data-testid=conversa] textarea").fill("x" * 520)
