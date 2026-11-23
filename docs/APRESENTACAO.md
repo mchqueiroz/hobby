@@ -18,7 +18,7 @@ Cada mídia tem o seu app: Letterboxd para filmes, MyAnimeList para anime, Goodr
 1. **Apresentação** (`/`): a promessa em uma frase. Toque em **Ver com dados de exemplo**.
 2. **Descobrir**: aponte a explicação de cada sugestão, por exemplo "Porque você deu 5★ a Berserk (mangá): os dois são sombrio e jornada épica". Esse é o diferencial: a recomendação cruza mídias e diz por quê. Mostre o filtro por mídia.
 3. **Buscar**: digite "Harry Potter". Livro, filme e jogo aparecem juntos, ordenados por relevância.
-4. **Registrar** (botão + no canto): escolha uma obra e dê nota em dois toques. Mostre o "Desfazer".
+4. **Registrar** (botão + flutuante no canto de baixo): escolha uma obra e dê nota em dois toques. Mostre o "Desfazer".
 5. **Obra** (toque em um jogo, como Hades): sinopse, nota, onde encontrar, obras parecidas, "Fixar na vitrine", "A seguir" e plataforma.
 6. **Perfil**: cartão com o arquétipo do gosto, números por mídia, a vitrine e a biblioteca com filtros. Abra Estatísticas para o tempo dedicado e Retrospectiva para a imagem do ano.
 7. **Importar** (opcional): explique que dá para trazer o histórico do AniList, MyAnimeList, Letterboxd, Goodreads e StoryGraph.

@@ -69,8 +69,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <main id="conteudo" className={bare ? "app bare" : "app"}><div className="page" key={path}>{children}</div></main>
       {!bare && (
         <>
-          {/* no celular o "+" fica sozinho no canto superior direito; no computador vira "Registrar" no menu lateral */}
-          <button type="button" className="plus-top" aria-label="Registrar um item" onClick={() => openRegister()}><Plus size={22} weight="bold" aria-hidden="true" /></button>
+          {/* no celular o "+" flutua sozinho no canto inferior direito, acima do menu; no computador vira "Registrar" no menu lateral */}
+          <button type="button" className="fab" aria-label="Registrar um item" onClick={() => openRegister()}><Plus size={26} weight="bold" aria-hidden="true" /></button>
           <div className="tabbar">
             <nav aria-label="Principal">
               <button type="button" className="plus" aria-label="Registrar um item" onClick={() => openRegister()}><Plus size={20} weight="bold" aria-hidden="true" /></button>
@@ -84,7 +84,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </>
       )}
       {storageProblem && (
-        <div role="alert" data-testid="aviso-armazenamento" className="card" style={{ position: "fixed", left: 12, right: 12, top: "calc(env(safe-area-inset-top) + 62px)", zIndex: 60, borderColor: "var(--danger)" }}>
+        <div role="alert" data-testid="aviso-armazenamento" className="card" style={{ position: "fixed", left: 12, right: 12, top: 12, zIndex: 60, borderColor: "var(--danger)" }}>
           <strong style={{ fontSize: 14 }}>Não consegui salvar neste aparelho</strong>
           <p style={{ fontSize: 13, marginTop: 4 }}>O armazenamento do navegador está cheio ou bloqueado. O que você registrar agora pode se perder ao fechar o app. Libere espaço, ou <Link href="/perfil" style={{ textDecoration: "underline" }}>exporte seus dados no Perfil</Link>.</p>
         </div>
