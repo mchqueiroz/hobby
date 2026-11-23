@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { badges, bridgeVibes, dna, favorites, persona, weeklyStreak, memberSince } from "@/lib/insights";
+import { badges, bridgeVibes, dna, favorites, persona, showcase, weeklyStreak, memberSince } from "@/lib/insights";
 import { MEDIA_HUE, bannerColors, bannerGradient, vibePalette } from "@/lib/palette";
 import { initials, MAX_NAME, setProfileName, useProfile } from "@/lib/profile";
 import { bannerStyle, ProfileImageEditor } from "./ProfileImageEditor";
@@ -132,11 +132,13 @@ export function TasteDna({ lib }: { lib: Library }) {
 /* ------------------------------ favoritos ------------------------------ */
 
 export function Favorites({ lib }: { lib: Library }) {
-  const favs = favorites(lib, 4);
+  const pinned = showcase(lib);
+  const favs = pinned.length ? pinned : favorites(lib, 4);
   if (favs.length === 0) return null;
   return (
-    <section aria-labelledby="fav-t">
-      <p className="label" id="fav-t">Seus favoritos</p>
+    <section aria-labelledby="fav-t" data-testid="vitrine-perfil">
+      <p className="label" id="fav-t">{pinned.length ? "Vitrine" : "Seus favoritos"}</p>
+      {!pinned.length && <p className="muted" style={{ fontSize: 12.5, margin: "-4px 0 8px" }}>Escolha você as 4 da vitrine: abra uma obra e toque em “Fixar na vitrine”.</p>}
       <ul className="grid4" style={{ listStyle: "none" }}>
         {favs.map(({ entry, item }) => (
           <li key={item.id}>

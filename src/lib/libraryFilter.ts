@@ -15,6 +15,8 @@ export interface Filters {
   vibes: string[];
   /** etiquetas marcadas: o registro precisa ter todas */
   tags: string[];
+  /** plataforma ou formato do registro ("Switch", "E-book"…) ou "tudo" */
+  format: string;
   q: string;
   sort: Sort;
 }
@@ -22,7 +24,7 @@ export interface Row {
   e: Entry;
   item: Item;
 }
-export const DEFAULT_FILTERS: Filters = { status: "todos", media: "tudo", era: "tudo", vibes: [], tags: [], q: "", sort: "recentes" };
+export const DEFAULT_FILTERS: Filters = { status: "todos", media: "tudo", era: "tudo", vibes: [], tags: [], format: "tudo", q: "", sort: "recentes" };
 
 export const norm = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -52,7 +54,7 @@ export function allRows(lib: Library): Row[] {
   return out;
 }
 
-type Facet = "status" | "media" | "era";
+type Facet = "status" | "media" | "era" | "format";
 
 /** Aplica todos os filtros, menos o da faceta `skip` (usado para contar o que cada chip traria). */
 function match(r: Row, f: Filters, skip?: Facet): boolean {
@@ -61,6 +63,7 @@ function match(r: Row, f: Filters, skip?: Facet): boolean {
   if (skip !== "era" && f.era !== "tudo" && eraOf(r.item.year) !== f.era) return false;
   if (f.vibes.length && !f.vibes.every((v) => r.item.vibes.includes(v))) return false;
   if (f.tags.length && !f.tags.every((t) => (r.e.tags ?? []).includes(t))) return false;
+  if (skip !== "format" && (f.format ?? "tudo") !== "tudo" && r.e.format !== f.format) return false;
   const q = norm(f.q.trim());
   if (q && !norm(r.item.title).includes(q) && !norm(r.item.author ?? "").includes(q)) return false;
   return true;
@@ -82,6 +85,7 @@ export interface Facets {
   eras: { key: string; label: string; count: number }[];
   vibes: { vibe: string; count: number }[];
   tags: { tag: string; count: number }[];
+  formats: { format: string; count: number }[];
 }
 
 /** Contagem de cada opção considerando os outros filtros ativos (não o da própria faceta). */
@@ -109,7 +113,12 @@ export function facets(rows: Row[], f: Filters): Facets {
   for (const t of f.tags) if (!tagCount.has(t)) tagCount.set(t, 0);
   const tags = [...tagCount].map(([tag, count]) => ({ tag, count })).sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 
-  return { status, media, eras, vibes, tags };
+  const fmtCount = new Map<string, number>();
+  for (const r of rows) if (r.e.format && match(r, f, "format")) fmtCount.set(r.e.format, (fmtCount.get(r.e.format) ?? 0) + 1);
+  if ((f.format ?? "tudo") !== "tudo" && !fmtCount.has(f.format)) fmtCount.set(f.format, 0);
+  const formats = [...fmtCount].map(([format, count]) => ({ format, count })).sort((a, b) => b.count - a.count || a.format.localeCompare(b.format));
+
+  return { status, media, eras, vibes, tags, formats };
 }
 
-export const isFiltered = (f: Filters) => f.media !== "tudo" || f.era !== "tudo" || f.vibes.length > 0 || f.tags.length > 0 || f.q.trim() !== "";
+export const isFiltered = (f: Filters) => f.media !== "tudo" || f.era !== "tudo" || f.vibes.length > 0 || f.tags.length > 0 || (f.format ?? "tudo") !== "tudo" || f.q.trim() !== "";

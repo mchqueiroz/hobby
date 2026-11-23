@@ -36,14 +36,14 @@ export default function Biblioteca() {
   const ready = useHydrated();
   const [f, setF] = useState<Filters>(remembered);
   const [view, setView] = useState<"lista" | "grade">("lista");
-  const [more, setMore] = useState(() => remembered.era !== "tudo" || remembered.vibes.length > 0 || remembered.tags.length > 0 || remembered.sort !== "recentes");
+  const [more, setMore] = useState(() => remembered.era !== "tudo" || remembered.vibes.length > 0 || remembered.tags.length > 0 || remembered.format !== "tudo" || remembered.sort !== "recentes");
   const set = (p: Partial<Filters>) => setF((cur) => (remembered = { ...cur, ...p }));
 
   const all = useMemo(() => allRows(lib), [lib]);
   const rows = useMemo(() => applyFilters(all, f), [all, f]);
   const fc = useMemo(() => facets(all, f), [all, f]);
 
-  const activeExtra = (f.era !== "tudo" ? 1 : 0) + f.vibes.length + f.tags.length + (f.sort !== "recentes" ? 1 : 0);
+  const activeExtra = (f.era !== "tudo" ? 1 : 0) + f.vibes.length + f.tags.length + (f.format !== "tudo" ? 1 : 0) + (f.sort !== "recentes" ? 1 : 0);
   if (!ready) return null;
   const total = Object.keys(lib.entries).length;
 
@@ -78,6 +78,10 @@ export default function Biblioteca() {
             <FilterRow label="Etiquetas" selected={f.tags} onPick={(t) => set({ tags: f.tags.includes(t) ? f.tags.filter((x) => x !== t) : [...f.tags, t] })}
               options={fc.tags.map((t) => ({ value: t.tag, label: t.tag, count: t.count }))} />
           )}
+          {fc.formats.length > 0 && (
+            <FilterRow label="Plataforma / formato" selected={f.format} onPick={(v) => set({ format: v === f.format ? "tudo" : v })}
+              options={fc.formats.map((x) => ({ value: x.format, label: x.format, count: x.count }))} />
+          )}
           <FilterRow label="Ordenar por" selected={f.sort} onPick={(sort) => set({ sort })} options={SORTS} />
         </details>
       </div>
@@ -85,7 +89,7 @@ export default function Biblioteca() {
       {total > 0 && (
         <p className="row gap8 mt12" style={{ alignItems: "center", fontSize: 13 }} role="status" data-testid="resumo">
           <span className="muted">{rows.length} {rows.length === 1 ? "item" : "itens"}{isFiltered(f) ? " com esses filtros" : ""}</span>
-          {isFiltered(f) && <button type="button" className="chip" onClick={() => set({ media: "tudo", era: "tudo", vibes: [], tags: [], q: "" })}>Limpar filtros</button>}
+          {isFiltered(f) && <button type="button" className="chip" onClick={() => set({ media: "tudo", era: "tudo", vibes: [], tags: [], format: "tudo", q: "" })}>Limpar filtros</button>}
         </p>
       )}
 

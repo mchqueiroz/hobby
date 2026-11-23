@@ -158,6 +158,10 @@ export function saveEntry(item: Item, status: Status, rating?: number, review?: 
   if (prev?.total) entry.total = prev.total;
   if (prev?.rounds) entry.rounds = prev.rounds;
   if (prev?.tags?.length) entry.tags = prev.tags;
+  if (prev?.pin) entry.pin = prev.pin;
+  if (prev?.format) entry.format = prev.format;
+  // a fila é de coisas a começar: ao sair de "quero" a obra sai da fila
+  if (prev?.queue && status === "quero") entry.queue = prev.queue;
   const isSeed = !!SEED_BY_ID[item.id];
   const wasDismissed = lib.dismissed.includes(item.id);
   set({
@@ -293,6 +297,68 @@ export function setTags(itemId: string, tags: string[]) {
   set({ ...lib, entries: { ...lib.entries, [itemId]: next }, ts: touch(lib, [`e:${itemId}`]) });
 }
 
+export const MAX_PINS = 4;
+export const MAX_QUEUE = 12;
+
+function patchEntry(itemId: string, f: (e: Entry) => Entry | null): boolean {
+  const lib = snapshot();
+  const e = lib.entries[itemId];
+  if (!e) return false;
+  const next = f({ ...e });
+  if (!next) return false;
+  set({ ...lib, entries: { ...lib.entries, [itemId]: next }, ts: touch(lib, [`e:${itemId}`]) });
+  return true;
+}
+
+/** Fixa ou tira da vitrine do perfil. Devolve false quando a vitrine já está cheia. */
+/** Carimbo de ordem sempre maior que o último usado (dois toques no mesmo milissegundo não empatam). */
+const nextOrder = (key: "pin" | "queue") => Math.max(Date.now(), ...Object.values(snapshot().entries).map((x) => (x[key] ?? 0) + 1));
+
+export function togglePin(itemId: string): boolean {
+  const full = Object.values(snapshot().entries).filter((x) => x.pin).length >= MAX_PINS;
+  const order = nextOrder("pin");
+  return patchEntry(itemId, (e) => {
+    if (e.pin) delete e.pin;
+    else if (full) return null;
+    else e.pin = order;
+    return e;
+  });
+}
+
+/** Põe ou tira da fila "A seguir" (só para o que está em "quero"). Devolve false quando não cabe. */
+export function toggleQueue(itemId: string): boolean {
+  const full = Object.values(snapshot().entries).filter((x) => x.queue).length >= MAX_QUEUE;
+  const order = nextOrder("queue");
+  return patchEntry(itemId, (e) => {
+    if (e.queue) delete e.queue;
+    else if (full || e.status !== "quero") return null;
+    else e.queue = order;
+    return e;
+  });
+}
+
+/** Sobe uma posição na fila (troca o carimbo com o anterior). */
+export function queueUp(itemId: string) {
+  const lib = snapshot();
+  const q = Object.values(lib.entries).filter((e) => e.queue).sort((a, b) => a.queue! - b.queue!);
+  const i = q.findIndex((e) => e.itemId === itemId);
+  if (i <= 0) return;
+  const [a, b] = [q[i - 1], q[i]];
+  set({
+    ...lib,
+    entries: { ...lib.entries, [a.itemId]: { ...a, queue: b.queue }, [b.itemId]: { ...b, queue: a.queue } },
+    ts: touch(lib, [`e:${a.itemId}`, `e:${b.itemId}`]),
+  });
+}
+
+export function setFormat(itemId: string, format: string | null) {
+  patchEntry(itemId, (e) => {
+    if (format) e.format = format.slice(0, 24);
+    else delete e.format;
+    return e;
+  });
+}
+
 /** meio-dia de hoje, no horário local (o mesmo formato do campo de data) */
 const todayNoon = () => {
   const d = new Date();
@@ -388,6 +454,14 @@ export function toggleInList(listId: string, item: Item): boolean {
   const itemIds = has ? l.itemIds.filter((i) => i !== item.id) : [...l.itemIds, item.id];
   set({ ...lib, items, lists: { ...lib.lists, [listId]: { ...l, itemIds } }, ts: touch(lib, [`l:${listId}`]) });
   return !has;
+}
+
+/** Salva como lista nova uma lista recebida por link. Devolve o id, ou null se o nome for inválido. */
+export function saveSharedList(name: string, items: Item[]): string | null {
+  const id = createList(name);
+  if (!id) return null;
+  for (const it of items) toggleInList(id, it);
+  return id;
 }
 
 /* ------------------------------ ponte para a sincronização ------------------------------ */

@@ -1,4 +1,4 @@
-import { ANILIST_GENRES, IGDB_TERMS, MB_DISCOVER, OL_DISCOVER, type Vibe } from "./vibes";
+import { ANILIST_GENRES, DEEZER_GENRES, IGDB_TERMS, MB_DISCOVER, OL_DISCOVER, STEAM_TAG_VIBES, type Vibe } from "./vibes";
 import {
   mapAniListMedia,
   isMbid,
@@ -26,6 +26,7 @@ import {
   mapIgdbDetails,
   mapMusicBrainzDetails,
   mapOpenLibraryDetails,
+  mapDeezerDetails,
   mapSteamDetails,
   mapTmdbDetails,
   type AniListDetailsRaw,
@@ -334,17 +335,20 @@ const STEAM_TAGS: Partial<Record<Vibe, number>> = {
   exploração: 3834, estratégia: 9, família: 5350, introspectivo: 15277, melancólico: 5608, "slice of life": 1654,
 };
 
-export function mapSteam(id: number, d: SteamApp, extra: Vibe[] = []): Item | null {
+export function mapSteam(id: number, d: SteamApp, extra: Vibe[] = [], tags: string[] = []): Item | null {
   if (!d.name || (d.type && d.type !== "game")) return null;
   const year = Number(/(\d{4})/.exec(d.release_date?.date ?? "")?.[1]) || undefined;
-  const vibes = Array.from(new Set([...extra, ...(d.genres ?? []).flatMap((g) => STEAM_GENRES[g.description] ?? [])])).slice(0, 6);
+  // tags da comunidade (mais votadas primeiro) dizem muito mais que os gêneros da loja; os gêneros completam
+  const fromTags = tags.flatMap((t) => STEAM_TAG_VIBES[t] ?? []);
+  const vibes = Array.from(new Set([...extra, ...fromTags, ...(d.genres ?? []).flatMap((g) => STEAM_GENRES[g.description] ?? [])])).slice(0, 6);
   const score = d.metacritic?.score;
   return { id: `steam:${id}`, title: d.name, media: "jogo", year, vibes, source: "steam", cover: steamCover(id), quality: score ? score / 10 : undefined };
 }
 
 async function steamGet<T>(path: string, params: Record<string, string>): Promise<T> {
   const url = new URL(STEAM() + path);
-  for (const [k, v] of Object.entries({ l: "portuguese", cc: "BR", ...params })) url.searchParams.set(k, v);
+  // "brazilian" é o pt-BR da Steam ("portuguese" é o de Portugal e quase sempre cai no inglês)
+  for (const [k, v] of Object.entries({ l: "brazilian", cc: "BR", ...params })) url.searchParams.set(k, v);
   return json<T>(await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" }));
 }
 
@@ -353,11 +357,27 @@ export async function steamApp(id: number): Promise<SteamApp | null> {
   return body[id]?.success ? (body[id].data ?? null) : null;
 }
 
+const STEAMSPY = () => env("STEAMSPY_BASE") ?? "https://steamspy.com";
+
+/** Tags da comunidade de um jogo, das mais votadas para as menos (SteamSpy, sem chave). Falha vira lista vazia. */
+async function steamTags(id: number): Promise<string[]> {
+  try {
+    const res = await fetch(`${STEAMSPY()}/api.php?request=appdetails&appid=${id}`, { signal: AbortSignal.timeout(4_000), cache: "no-store" });
+    const body = await json<{ tags?: Record<string, number> | [] }>(res);
+    return body.tags && !Array.isArray(body.tags) ? Object.entries(body.tags).sort((a, b) => b[1] - a[1]).map(([t]) => t) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Detalhes de cada id (a Steam só dá dados completos um app por vez); falha individual vira item mínimo. */
 async function steamItems(hits: { id: number; name: string }[], extra: Vibe[] = []): Promise<Item[]> {
-  const apps = await Promise.all(hits.map((h) => steamApp(h.id).catch(() => null)));
+  const [apps, tags] = await Promise.all([
+    Promise.all(hits.map((h) => steamApp(h.id).catch(() => null))),
+    Promise.all(hits.map((h) => steamTags(h.id))),
+  ]);
   return hits
-    .map((h, i) => (apps[i] ? mapSteam(h.id, apps[i]!, extra) : mapSteam(h.id, { name: h.name, type: "game" }, extra)))
+    .map((h, i) => mapSteam(h.id, apps[i] ?? { name: h.name, type: "game" }, extra, tags[i]))
     .filter((i): i is Item => !!i);
 }
 
@@ -383,6 +403,79 @@ export async function steamDiscover(vibes: string[], page = 1): Promise<Item[]> 
 async function steamFind(title: string): Promise<number | null> {
   const body = await steamGet<{ items?: { id: number; type?: string }[] }>("/api/storesearch/", { term: title });
   return body.items?.find((i) => i.type === "app")?.id ?? null;
+}
+
+/* ------------------- Deezer (música, sem chave; reserva do MusicBrainz) ------------------- */
+
+const DEEZER = () => env("DEEZER_BASE") ?? "https://api.deezer.com";
+
+export interface DeezerAlbum {
+  id: number;
+  title: string;
+  record_type?: string;
+  cover_xl?: string;
+  cover_big?: string;
+  genre_id?: number;
+  release_date?: string;
+  artist?: { name?: string };
+  genres?: { data?: { id: number; name: string }[] };
+  nb_tracks?: number;
+  duration?: number;
+  label?: string;
+  link?: string;
+}
+
+/** Só álbuns de estúdio, como no MusicBrainz: singles e coletâneas ficam de fora. */
+export function mapDeezer(a: DeezerAlbum, extra: Vibe[] = []): Item | null {
+  if (!a?.id || !a.title || (a.record_type && a.record_type !== "album") || /\b(ao vivo|live|greatest hits|best of|coletânea)\b/i.test(a.title)) return null;
+  const genreIds = a.genres?.data?.map((g) => g.id) ?? (a.genre_id ? [a.genre_id] : []);
+  const vibes = Array.from(new Set([...extra, ...genreIds.flatMap((g) => DEEZER_GENRES[g] ?? [])])).slice(0, 6);
+  return {
+    id: `deezer:${a.id}`,
+    title: a.title,
+    media: "musica",
+    year: Number((a.release_date ?? "").slice(0, 4)) || undefined,
+    vibes,
+    source: "deezer",
+    cover: a.cover_xl || a.cover_big,
+    author: a.artist?.name,
+  };
+}
+
+async function deezerGet<T>(path: string): Promise<T> {
+  return json<T>(await fetch(DEEZER() + path, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" }));
+}
+
+export async function deezerSearch(q: string, artist?: string): Promise<Item[]> {
+  const query = artist ? `album:"${q.replace(/"/g, " ")}" artist:"${artist.replace(/"/g, " ")}"` : q;
+  const body = await deezerGet<{ data?: DeezerAlbum[] }>(`/search/album?q=${encodeURIComponent(query)}&limit=12`);
+  return (body.data ?? []).map((a) => mapDeezer(a)).filter((i): i is Item => !!i).slice(0, 8);
+}
+
+/** Vibe → gênero do Deezer (o primeiro gênero cujo mapa contém a vibe). */
+function deezerGenreFor(vibes: string[]): { id: number; vibe: Vibe } | null {
+  for (const v of vibes) {
+    const hit = Object.entries(DEEZER_GENRES).find(([, vs]) => vs.includes(v as Vibe));
+    if (hit) return { id: Number(hit[0]), vibe: v as Vibe };
+  }
+  return null;
+}
+
+export async function deezerDiscover(vibes: string[], page = 1): Promise<Item[]> {
+  const g = deezerGenreFor(vibes);
+  if (!g) return [];
+  const body = await deezerGet<{ data?: DeezerAlbum[] }>(`/chart/${g.id}/albums?limit=20&index=${(page - 1) * 20}`);
+  return (body.data ?? []).map((a) => mapDeezer({ ...a, genre_id: a.genre_id ?? g.id }, [g.vibe])).filter((i): i is Item => !!i);
+}
+
+/** MusicBrainz primeiro (tem tags da comunidade); se ele falhar, o Deezer responde no lugar. */
+async function musicOr<T>(primary: () => Promise<T>, backup: () => Promise<T>): Promise<T> {
+  try {
+    return await primary();
+  } catch (e) {
+    console.warn("[hobby-fonte] musicbrainz -> deezer", e instanceof Error ? e.message : String(e));
+    return backup();
+  }
 }
 
 /* ------------------- junta tolerando falha por fonte ------------------- */
@@ -431,7 +524,7 @@ export async function searchAll(q: string): Promise<RemoteResult> {
     settle("anilist", true, () => anilistSearch(q, "anime")),
     settle("anilist-manga", true, () => anilistSearch(q, "manga")),
     settle("openlibrary", true, () => openLibrarySearch(q)),
-    settle("musicbrainz", true, () => musicBrainzSearch(q)),
+    settle("musicbrainz", true, () => musicOr(() => musicBrainzSearch(q), () => deezerSearch(q))),
     settle("steam", !c.igdb, () => steamSearch(q)),
   ]);
   return merge(t, g, a, m, o, u, st);
@@ -445,7 +538,7 @@ export async function discoverAll(vibes: string[], page = 1): Promise<RemoteResu
     settle("anilist", true, () => anilistDiscover(vibes, "anime", page)),
     settle("anilist-manga", true, () => anilistDiscover(vibes, "manga", page)),
     settle("openlibrary", true, () => openLibraryDiscover(vibes, page)),
-    settle("musicbrainz", true, () => musicBrainzDiscover(vibes, page)),
+    settle("musicbrainz", true, () => musicOr(() => musicBrainzDiscover(vibes, page), () => deezerDiscover(vibes, page))),
     settle("steam", !c.igdb, () => steamDiscover(vibes, page)),
   ]);
   return merge(t, g, a, m, o, u, st);
@@ -456,7 +549,7 @@ export async function discoverAll(vibes: string[], page = 1): Promise<RemoteResu
 export async function findCover(title: string, media: Media, year?: number, artist?: string): Promise<string | null> {
   const c = configured();
   if (media === "musica") {
-    const found = await musicBrainzSearch(title, artist);
+    const found = await musicOr(() => musicBrainzSearch(title, artist), () => deezerSearch(title, artist));
     const hit = (year && found.find((i) => i.year === year)) || found[0];
     return hit?.cover ?? null;
   }
@@ -556,6 +649,9 @@ export async function findDetails(q: DetailsQuery): Promise<Details | null> {
     return games[0] ? mapIgdbDetails(games[0] as unknown as IgdbDetailsRaw) : null;
   }
 
+  if (q.media === "musica" && kind === "deezer" && /^\d+$/.test(a ?? "")) {
+    return mapDeezerDetails(await deezerGet<DeezerAlbum>(`/album/${a}`));
+  }
   if (q.media === "musica") {
     let mbid = kind === "musicbrainz" && isMbid(a) ? a : null;
     if (!mbid) {

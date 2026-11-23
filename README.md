@@ -69,6 +69,7 @@ O `run.sh` sobe `e2e/mock.mjs` na porta 4010, que imita AniList, TMDB, IGDB, Ope
   1. Cada obra tem de 3 a 6 "vibes" tiradas de um vocabulário comum (`src/lib/vibes.ts`).
   2. O gosto soma as vibes das obras avaliadas, com peso `nota − 3`. Concluída sem nota vale +0,5, abandonada vale −1, e "Não é pra mim" desconta.
   3. Cada candidata recebe a soma do gosto nas suas vibes, normalizada pelo número de vibes, com bônus quando o motivo vem de outra mídia. A explicação mostra a obra da biblioteca que mais contribuiu.
+- **Do benchmark** (`docs/BENCHMARK.md`): vitrine com 4 obras fixadas no perfil (também no público), fila "A seguir" no Início, plataforma ou formato por registro com filtro na Biblioteca, tempo dedicado estimado em Estatísticas e lista compartilhada por link (`/listas/ver#d=…`, a lista vai no fragmento e não passa pelo servidor).
 - **Social** (precisa do Supabase): perfis públicos, seguir, resenhas, discussão com respostas, curtidas, denúncia/bloqueio e painel de moderação.
 - **Supabase acordado:** `vercel.json` agenda `/api/keepalive` uma vez por dia (protegido por `CRON_SECRET`), porque o plano gratuito pausa após ~7 dias sem uso.
 - **Falhas de fonte:** saem no log da Vercel como `[hobby-fonte]`; erros do navegador como `[hobby-erro]`.

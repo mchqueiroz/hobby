@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { getItem } from "@/lib/recommend";
 import { deleteList, moveInList, renameList, toggleInList, useHydrated, useLibrary } from "@/lib/store";
+import { encodeList } from "@/lib/shareList";
+import { useShell } from "@/components/Shell";
 import { Cover, MediaTag } from "@/components/ui";
 
 export default function ListaPage() {
@@ -15,6 +17,7 @@ export default function ListaPage() {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [confirm, setConfirm] = useState(false);
+  const { toast } = useShell();
   const list = lib.lists[id];
 
   if (!ready) return null;
@@ -70,6 +73,15 @@ export default function ListaPage() {
       </ul>
 
       <div className="row gap8 mt24" style={{ flexWrap: "wrap" }}>
+        {items.length > 0 && (
+          <button type="button" className="btn small" style={{ width: "auto" }} data-testid="compartilhar-lista" onClick={async () => {
+            const url = `${window.location.origin}/listas/ver#d=${encodeList(list.name, items)}`;
+            try {
+              if (navigator.share) await navigator.share({ title: list.name, text: `Minha lista no Hobby: ${list.name}`, url });
+              else { await navigator.clipboard.writeText(url); toast("Link da lista copiado"); }
+            } catch { /* a pessoa cancelou o compartilhamento */ }
+          }}>Compartilhar</button>
+        )}
         {!editing && <button type="button" className="btn ghost small" style={{ width: "auto" }} onClick={() => { setName(list.name); setEditing(true); }}>Renomear</button>}
         {!confirm ? (
           <button type="button" className="btn danger small" style={{ width: "auto" }} onClick={() => setConfirm(true)}>Excluir lista</button>

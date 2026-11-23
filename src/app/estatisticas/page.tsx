@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { computeStats, heatmap } from "@/lib/stats";
+import { computeStats, heatmap, timeSpent } from "@/lib/stats";
 import { fmtRating } from "@/lib/recommend";
 import { useHydrated, useLibrary } from "@/lib/store";
 import { MEDIAS, MEDIA_PLURAL, STATUS_LABEL, type Status } from "@/lib/types";
@@ -26,6 +26,7 @@ export default function Estatisticas() {
   const lib = useLibrary();
   const ready = useHydrated();
   const s = useMemo(() => computeStats(lib), [lib]);
+  const time = useMemo(() => timeSpent(lib), [lib]);
   if (!ready) return null;
 
   const medias = MEDIAS;
@@ -63,6 +64,23 @@ export default function Estatisticas() {
               </div>
             ))}
           </div>
+
+          {time.total > 0 && (
+            <>
+              <p className="label">Tempo dedicado</p>
+              <div className="card" data-testid="tempo">
+                <p style={{ fontFamily: "Lora, serif", fontSize: 30, fontWeight: 700 }}>
+                  ≈ {time.total.toLocaleString("pt-BR")} h <span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>({(time.total / 24).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} dias)</span>
+                </p>
+                {medias.filter((m) => time.byMedia[m] > 0).map((m) => (
+                  <Bar key={m} label={MEDIA_PLURAL[m]} value={time.byMedia[m]} max={Math.max(...Object.values(time.byMedia))} color={`var(--${m})`} />
+                ))}
+                <p className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+                  Estimativa: usa o progresso e o total que você anotou; sem eles, vale episódio de anime de 24 min, filme de 2 h, 40 páginas por hora, 20 h por jogo e álbum de 45 min. Conta as vezes que você repetiu.
+                </p>
+              </div>
+            </>
+          )}
 
           <p className="label">Por status</p>
           <div className="card">

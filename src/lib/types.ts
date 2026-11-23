@@ -76,7 +76,7 @@ export interface Item {
   /** de 3 a 6 termos do vocabulário comum (ver vibes.ts) */
   vibes: string[];
   brazil?: boolean;
-  source: "seed" | "anilist" | "tmdb" | "igdb" | "steam" | "openlibrary" | "musicbrainz";
+  source: "seed" | "anilist" | "tmdb" | "igdb" | "steam" | "openlibrary" | "musicbrainz" | "deezer";
   /** URL da capa/pôster quando a API fornece */
   cover?: string;
   /** autoria: escritor (livro) ou artista (álbum). Só informativo. */
@@ -103,7 +103,24 @@ export interface Entry {
   tags?: string[];
   /** quantas vezes a pessoa já fez (1 = só a primeira). Ausente vale 1. */
   rounds?: number;
+  /** na vitrine do perfil (até 4): quando foi fixada, para manter a ordem */
+  pin?: number;
+  /** na fila "A seguir" (só vale em "quero"): quando entrou, para manter a ordem */
+  queue?: number;
+  /** plataforma ou formato: "Switch", "E-book", "Vinil"… (ver FORMATS) */
+  format?: string;
 }
+
+/** Onde/como a pessoa viu, jogou, leu ou ouviu. Inspirado em Backloggd (plataforma) e StoryGraph (formato). */
+export const FORMATS: Record<Media, string[]> = {
+  jogo: ["PC", "PlayStation", "Xbox", "Switch", "Celular", "Outro"],
+  livro: ["Físico", "E-book", "Audiolivro"],
+  manga: ["Físico", "Digital"],
+  filme: ["Cinema", "Streaming", "TV", "Mídia física"],
+  anime: ["Streaming", "TV", "Mídia física"],
+  musica: ["Streaming", "Vinil", "CD"],
+};
+export const FORMAT_LABEL: Record<Media, string> = { jogo: "Plataforma", livro: "Formato", manga: "Formato", filme: "Onde viu", anime: "Onde viu", musica: "Formato" };
 
 /** Progresso pronto para exibir: valor, total (se houver) e porcentagem (0 a 100). null quando não há progresso. */
 export function entryProgress(e: Pick<Entry, "progress" | "total">): { value: number; total?: number; pct?: number } | null {

@@ -1,5 +1,5 @@
 import { getItem, tasteProfile } from "./recommend";
-import { perMedia, type Library, type Media, type Status } from "./types";
+import { MEDIAS, perMedia, type Library, type Media, type Status } from "./types";
 
 /** Data efetiva de uma entrada: a que a pessoa escolheu, senão a do registro. 0 = histórico importado sem data. */
 export const effectiveDate = (e: { date?: number; at: number }) => e.date ?? e.at;
@@ -146,4 +146,37 @@ export function heatmap(lib: Library, weeks = 20, now = Date.now()): HeatDay[][]
   const start = today - dow - (weeks - 1) * 7;
   return Array.from({ length: weeks }, (_, w) =>
     Array.from({ length: 7 }, (_, i) => { const day = start + w * 7 + i; return { day, count: counts.get(day) ?? 0, future: day > today }; }));
+}
+
+/**
+ * Horas por unidade de progresso e por obra inteira (quando não há progresso nem total).
+ * Referências: episódio de anime de 24 min, episódio de série de 45 min, filme de 2 h, capítulo de mangá de 5 min,
+ * 40 páginas por hora, horas de jogo anotadas (ou 20 h, perto da mediana do HowLongToBeat), álbum de 45 min.
+ */
+const HOURS: Record<Media, { unit: number; whole: number }> = {
+  anime: { unit: 0.4, whole: 4.8 },
+  filme: { unit: 0.75, whole: 2 },
+  manga: { unit: 1 / 12, whole: 8 },
+  livro: { unit: 1 / 40, whole: 8 },
+  jogo: { unit: 1, whole: 20 },
+  musica: { unit: 0.75 / 12, whole: 0.75 },
+};
+
+/** Estimativa do tempo dedicado, como o "tempo assistido" do TV Time e do Trakt, só que para todas as mídias. */
+export function timeSpent(lib: Library): { total: number; byMedia: Record<Media, number> } {
+  const byMedia = Object.fromEntries(MEDIAS.map((m) => [m, 0])) as Record<Media, number>;
+  for (const e of Object.values(lib.entries)) {
+    const it = getItem(lib, e.itemId);
+    if (!it || e.status === "quero") continue;
+    const h = HOURS[it.media];
+    const units = e.status === "concluido" ? (e.total ?? e.progress) : e.progress;
+    // filme com total 1 (ou sem total) é um filme; com mais de 1 são episódios de série
+    const whole = it.media === "filme" && (!units || units <= 1);
+    let hours = 0;
+    if (e.status === "concluido") hours = (units && !whole ? units * h.unit : h.whole) * (e.rounds ?? 1);
+    else if (units) hours = units * h.unit;
+    byMedia[it.media] += hours;
+  }
+  for (const m of MEDIAS) byMedia[m] = Math.round(byMedia[m]);
+  return { total: MEDIAS.reduce((a, m) => a + byMedia[m], 0), byMedia };
 }

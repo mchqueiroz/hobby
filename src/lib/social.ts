@@ -1,4 +1,4 @@
-import { dna, persona } from "./insights";
+import { dna, persona, showcase } from "./insights";
 import { getItem } from "./recommend";
 import { effectiveDate } from "./stats";
 import { MEDIAS, perMedia, type Library, type Media, type Status } from "./types";
@@ -27,6 +27,8 @@ export interface PublicStats {
   perMedia: Record<Media, number>;
   topVibes: string[];
   persona?: string;
+  /** até 4 obras que a pessoa fixou na vitrine (escolha dela tornar públicas) */
+  showcase?: ActivityItem[];
 }
 
 /** O que o perfil público mostra: só números e vibes, nunca títulos nem notas. */
@@ -40,7 +42,8 @@ export function buildStats(lib: Library): PublicStats {
     total++;
   }
   const p = persona(lib);
-  return { total, perMedia: counts, topVibes: dna(lib, 8).map((d) => d.vibe), ...(p ? { persona: p.title } : {}) };
+  const vit = showcase(lib).map(({ item: i }) => ({ id: i.id, title: i.title, media: i.media, ...(i.year ? { year: i.year } : {}), ...(i.author ? { author: i.author } : {}), ...(i.cover ? { cover: i.cover } : {}) }));
+  return { total, perMedia: counts, topVibes: dna(lib, 8).map((d) => d.vibe), ...(p ? { persona: p.title } : {}), ...(vit.length ? { showcase: vit } : {}) };
 }
 
 /** Lê o resumo vindo do banco sem confiar no formato. */
@@ -53,6 +56,20 @@ export function parseStats(raw: unknown): PublicStats {
     perMedia: counts,
     topVibes: Array.isArray(r.topVibes) ? r.topVibes.filter((v): v is string => typeof v === "string").slice(0, 8) : [],
     ...(typeof r.persona === "string" ? { persona: r.persona.slice(0, 60) } : {}),
+    ...(Array.isArray(r.showcase) ? { showcase: r.showcase.map(parseShowcaseItem).filter((x): x is ActivityItem => !!x).slice(0, 4) } : {}),
+  };
+}
+
+function parseShowcaseItem(x: unknown): ActivityItem | null {
+  const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+  const s = (v: unknown, max: number) => (typeof v === "string" && v && v.length <= max ? v : undefined);
+  const id = s(o.id, 120), title = s(o.title, 200), cover = s(o.cover, 400);
+  if (!id || !title || !MEDIAS.includes(o.media as Media)) return null;
+  return {
+    id, title, media: o.media as Media,
+    ...(typeof o.year === "number" && Number.isInteger(o.year) ? { year: o.year } : {}),
+    ...(s(o.author, 120) ? { author: s(o.author, 120) } : {}),
+    ...(cover && cover.startsWith("https://") ? { cover } : {}),
   };
 }
 

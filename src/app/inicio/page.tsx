@@ -5,8 +5,8 @@ import { useMemo, useState } from "react";
 import { fmtRating, getItem, recommend } from "@/lib/recommend";
 import { buildPool } from "@/lib/search";
 import { dayStreak, effectiveDate } from "@/lib/stats";
-import { cacheItem, saveEntry, stepProgress, track, undoLast, useHydrated, useLibrary } from "@/lib/store";
-import { PROGRESS_UNIT, entryProgress, progressText, statusLabel, wantLabel, type Entry, type Item } from "@/lib/types";
+import { cacheItem, queueUp, saveEntry, stepProgress, toggleQueue, track, undoLast, useHydrated, useLibrary } from "@/lib/store";
+import { MEDIA_LABEL, PROGRESS_UNIT, entryProgress, progressText, statusLabel, wantLabel, type Entry, type Item } from "@/lib/types";
 import { Cover, Header, MediaTag, ProgressBar, Rating } from "@/components/ui";
 import { useShell } from "@/components/Shell";
 import { dueLabel, releaseLabel } from "@/lib/releases";
@@ -49,6 +49,7 @@ export default function Inicio() {
   const soon = rel.list.filter((u) => u.days <= 14).slice(0, 3);
   const paused = rows.filter((r) => r.e.status === "pausei").sort((a, b) => b.e.at - a.e.at).slice(0, 3);
   const queue = rows.filter((r) => r.e.status === "quero").sort((a, b) => b.e.at - a.e.at).slice(0, 3);
+  const upNext = rows.filter((r) => r.e.status === "quero" && r.e.queue).sort((a, b) => a.e.queue! - b.e.queue!);
   const recent = rows.filter((r) => r.e.status !== "quero").sort((a, b) => b.e.at - a.e.at).slice(0, 4);
   const pick = useMemo(() => recommend(lib, { pool: buildPool([]), count: 1 })[0], [lib]);
   if (!ready) return null;
@@ -121,6 +122,26 @@ export default function Inicio() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+      {upNext.length > 0 && (
+        <section className="card mb12" data-testid="a-seguir" aria-label="A seguir">
+          <p className="label" style={{ margin: 0 }}>A seguir</p>
+          <ol className="stack gap8 mt8" style={{ listStyle: "none", padding: 0 }}>
+            {upNext.map(({ item }, i) => (
+              <li key={item.id} className="row" style={{ alignItems: "center", gap: 10 }}>
+                <span className="muted" style={{ width: 18, textAlign: "right", fontWeight: 700 }} aria-hidden="true">{i + 1}</span>
+                <Cover item={item} w={32} h={44} fs={9} />
+                <Link href={`/item/${encodeURIComponent(item.id)}`} style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>
+                  {item.title} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {MEDIA_LABEL[item.media]}</span>
+                </Link>
+                {i > 0 && <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} aria-label={`Subir ${item.title} na fila`} onClick={() => queueUp(item.id)}>↑</button>}
+                <button type="button" className="btn ghost small" style={{ width: "auto" }} aria-label={`Começar ${item.title}`}
+                  onClick={() => { saveEntry(item, "andamento"); toast(`${item.title}: Em andamento`, undoLast); }}>Começar</button>
+                <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} aria-label={`Tirar ${item.title} da fila`} onClick={() => toggleQueue(item.id)}>✕</button>
+              </li>
+            ))}
+          </ol>
         </section>
       )}
       <p className="label">Continuar</p>

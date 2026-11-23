@@ -100,6 +100,16 @@ export function persona(lib: Library): Persona | null {
 }
 
 /** Os melhores registros: nota mais alta primeiro, depois o mais recente. */
+/** As obras fixadas na vitrine, na ordem em que foram fixadas (até 4, como os favoritos do Letterboxd). */
+export function showcase(lib: Library): { entry: Entry; item: Item }[] {
+  return Object.values(lib.entries)
+    .filter((e) => e.pin)
+    .sort((a, b) => a.pin! - b.pin!)
+    .map((entry) => ({ entry, item: getItem(lib, entry.itemId) }))
+    .filter((r): r is { entry: Entry; item: Item } => !!r.item)
+    .slice(0, 4);
+}
+
 export function favorites(lib: Library, n = 4): { entry: Entry; item: Item }[] {
   return Object.values(lib.entries)
     .filter((e) => e.status === "concluido" && e.rating !== undefined)

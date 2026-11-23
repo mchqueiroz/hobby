@@ -16,7 +16,7 @@ import { affinity, threadKey, type ActivityRow } from "@/lib/social";
 import { cacheItem, saveEntry, undoLast, useHydrated, useLibrary } from "@/lib/store";
 import { useShell } from "@/components/Shell";
 import { wantLabel } from "@/lib/types";
-import { MEDIAS, MEDIA_PLURAL, type Media } from "@/lib/types";
+import { MEDIAS, MEDIA_PLURAL, type Item, type Media } from "@/lib/types";
 import type { PublicProfile } from "@/lib/community";
 
 type Loaded = { profile: PublicProfile; activity: ActivityRow[]; at: string[] } | null | "erro";
@@ -136,6 +136,25 @@ export default function PerfilPublico() {
           {aff.commonVibes.length > 0 && <p style={{ fontSize: 13, marginTop: 4 }}>Vibes em comum: {aff.commonVibes.join(", ")}.</p>}
           <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>Cálculo simples (notas nas mesmas obras + vibes), ainda não validado com pessoas reais.</p>
         </div>
+      )}
+
+      {p.stats.showcase && p.stats.showcase.length > 0 && (
+        <section aria-labelledby="vit-t" data-testid="vitrine-publica">
+          <p className="label" id="vit-t">Vitrine</p>
+          <ul className="grid4" style={{ listStyle: "none" }}>
+            {p.stats.showcase.map((it) => {
+              const item = { ...it, vibes: [], source: it.id.split(":")[0] } as Item;
+              return (
+              <li key={it.id}>
+                <Link href={`/item/${encodeURIComponent(it.id)}`} onClick={() => cacheItem(item)}>
+                  <Cover item={item} w={120} h={168} fs={12} />
+                  <strong style={{ display: "block", fontSize: 13, marginTop: 6 }}>{it.title}<span className="sr">, {MEDIA_PLURAL[it.media]}</span></strong>
+                </Link>
+              </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       <p className="label">Registros recentes</p>

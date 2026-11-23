@@ -36,3 +36,24 @@ describe("Steam", () => {
     expect(d.facts).toContain("Windows, Linux");
   });
 });
+
+describe("vibes enriquecidas", () => {
+  it("tags da comunidade da Steam vêm antes dos gêneros da loja", async () => {
+    const { mapSteam: m } = await import("../sources");
+    const it = m(1, { type: "game", name: "X", genres: [{ description: "Ação" }] }, [], ["Metroidvania", "Souls-like", "Tag que não existe"]);
+    expect(it?.vibes).toEqual(["exploração", "aventura", "sombrio", "ação intensa"]);
+  });
+  it("Deezer: só álbum, vibes pelo gênero, capa grande", async () => {
+    const { mapDeezer } = await import("../sources");
+    expect(mapDeezer({ id: 7, title: "Clube da Esquina", record_type: "album", genre_id: 78, release_date: "1972-03-01", cover_xl: "https://cdn-images.dzcdn.net/a.jpg", artist: { name: "Milton Nascimento" } }))
+      .toEqual({ id: "deezer:7", title: "Clube da Esquina", media: "musica", year: 1972, vibes: ["introspectivo", "melancólico"], source: "deezer", cover: "https://cdn-images.dzcdn.net/a.jpg", author: "Milton Nascimento" });
+    expect(mapDeezer({ id: 8, title: "Hit", record_type: "single" })).toBeNull();
+    expect(mapDeezer({ id: 9, title: "Ao Vivo no Rock in Rio", record_type: "album" })).toBeNull();
+  });
+  it("assunto do Open Library casa no começo da palavra", async () => {
+    const { olVibes } = await import("../vibes");
+    expect(olVibes(["Hogwarts School", "Award winner"])).not.toContain("guerra");
+    expect(olVibes(["World War, 1939-1945"])).toEqual(["guerra"]);
+    expect(olVibes(["Novela fantástica", "Magia"])).toEqual(["fantasia"]);
+  });
+});

@@ -35,7 +35,7 @@ export interface Availability {
   /** página de quem fornece os dados (JustWatch via TMDB) */
   pageUrl?: string;
   /** de onde vêm os dados, para dar o crédito */
-  source: "JustWatch" | "AniList" | "IGDB" | "Steam";
+  source: "JustWatch" | "AniList" | "IGDB" | "Steam" | "Deezer";
 }
 
 /** Só aceita links https (nada de javascript:, data: ou http solto). */
@@ -296,5 +296,31 @@ export function mapSteamDetails(id: number, d: SteamDetailsRaw): Details {
     score: d.metacritic?.score ? { value: d.metacritic.score / 10, source: "Metacritic" } : undefined,
     facts,
     where: { flatrate: [], rent: [], buy: d.is_free ? [] : ["Steam"], free: d.is_free ? ["Steam"] : [], links: [store], source: "Steam" },
+  };
+}
+
+/* ---------- Deezer (álbuns quando o MusicBrainz não responde) ---------- */
+
+export interface DeezerDetailsRaw {
+  id: number;
+  release_date?: string;
+  genres?: { data?: { name: string }[] };
+  nb_tracks?: number;
+  duration?: number;
+  label?: string;
+  link?: string;
+  artist?: { name?: string };
+}
+
+export function mapDeezerDetails(d: DeezerDetailsRaw): Details {
+  const facts: string[] = [];
+  if (d.release_date) facts.push(`Lançado em ${d.release_date.split("-").reverse().join("/")}`);
+  if (d.nb_tracks) facts.push(`${d.nb_tracks} faixas${d.duration ? `, ${Math.round(d.duration / 60)} min` : ""}`);
+  if (d.genres?.data?.length) facts.push(d.genres.data.map((g) => g.name).join(", "));
+  if (d.label) facts.push(`Selo: ${d.label}`);
+  return {
+    makers: d.artist?.name ? [d.artist.name] : undefined,
+    facts,
+    where: { flatrate: ["Deezer"], rent: [], buy: [], free: [], links: [{ name: "Deezer", url: d.link || `https://www.deezer.com/album/${d.id}` }], source: "Deezer" },
   };
 }

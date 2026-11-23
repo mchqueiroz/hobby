@@ -5,8 +5,8 @@ import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { getItem, recommend } from "@/lib/recommend";
 import { similarTo } from "@/lib/similar";
-import { cacheItem, dismiss, removeEntry, saveEntry, toggleInList, track, undismiss, undoLast, useHydrated, useLibrary } from "@/lib/store";
-import { MEDIA_LABEL, statusLabel, wantLabel } from "@/lib/types";
+import { cacheItem, dismiss, MAX_PINS, MAX_QUEUE, removeEntry, saveEntry, setFormat, toggleInList, togglePin, toggleQueue, track, undismiss, undoLast, useHydrated, useLibrary } from "@/lib/store";
+import { FORMAT_LABEL, FORMATS, MEDIA_LABEL, statusLabel, wantLabel } from "@/lib/types";
 import { Cover, MediaTag, Rating } from "@/components/ui";
 import { useShell } from "@/components/Shell";
 import { ObraTheme } from "@/components/ObraTheme";
@@ -63,6 +63,23 @@ export default function ItemPage() {
             <strong>{statusLabel(entry.status, item.media)}</strong>
             <Rating value={entry.rating} size={16} />
           </div>
+          <div className="row gap8 mt12" style={{ flexWrap: "wrap" }}>
+            <button type="button" className="chip" aria-pressed={!!entry.pin} data-testid="vitrine"
+              onClick={() => toast(togglePin(id) ? (entry.pin ? "Tirado da vitrine" : "Fixado na vitrine do perfil") : `A vitrine já tem ${MAX_PINS} obras. Tire uma no Perfil.`)}>
+              {entry.pin ? "★ Na vitrine" : "☆ Fixar na vitrine"}
+            </button>
+            {entry.status === "quero" && (
+              <button type="button" className="chip" aria-pressed={!!entry.queue} data-testid="fila"
+                onClick={() => toast(toggleQueue(id) ? (entry.queue ? "Tirado da fila" : "Na fila: aparece em Início, em A seguir") : `A fila já tem ${MAX_QUEUE} obras.`)}>
+                {entry.queue ? "✓ Na fila A seguir" : "+ A seguir"}
+              </button>
+            )}
+          </div>
+          <label className="label mt12" htmlFor="formato" style={{ display: "block" }}>{FORMAT_LABEL[item.media]}</label>
+          <select id="formato" className="field" value={entry.format ?? ""} onChange={(e) => setFormat(id, e.target.value || null)}>
+            <option value="">Não informado</option>
+            {FORMATS[item.media].map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
         </div>
       )}
 
