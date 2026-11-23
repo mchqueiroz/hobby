@@ -123,16 +123,16 @@ with sync_playwright() as p:
     check("Esc fecha a folha", pg.locator("[role=dialog]").count() == 0)
 
     # 9. biblioteca / item / perfil / métricas
-    pg.click("nav >> text=Biblioteca"); pg.wait_for_url("**/biblioteca"); pg.wait_for_selector("ul li")
-    rows = pg.locator("ul li").count()
+    pg.click("nav >> text=Perfil"); pg.wait_for_url("**/perfil"); pg.wait_for_selector("ul.cols2 li")
+    rows = pg.locator("ul.cols2 li").count()
     check("biblioteca abre mostrando tudo, inclusive o que ainda não foi concluído", rows == 18, str(rows))
     pg.get_by_role("button", name="Concluídos").click(); pg.wait_for_timeout(200)
-    rows = pg.locator("ul li").count()
+    rows = pg.locator("ul.cols2 li").count()
     check("filtrar por Concluídos mostra 14 (8 importados + 5 favoritos + 1 registrado)", rows == 14, str(rows))
     pg.screenshot(path="/tmp/hobby-shots/06_biblioteca.png")
     pg.click("text=Quero ver"); pg.wait_for_timeout(200)
-    check("aba 'Quero ver' tem Haikyu!! importado + 1 aceito", pg.locator("ul li").count() == 2, str(pg.locator("ul li").count()))
-    pg.click("text=Abandonei"); check("abandonados mostra Evangelion", "Neon Genesis Evangelion" in pg.inner_text("ul"))
+    check("aba 'Quero ver' tem Haikyu!! importado + 1 aceito", pg.locator("ul.cols2 li").count() == 2, str(pg.locator("ul.cols2 li").count()))
+    pg.click("text=Abandonei"); check("abandonados mostra Evangelion", "Neon Genesis Evangelion" in pg.inner_text("ul.cols2"))
 
     pg.click("a:has-text('Neon Genesis')"); pg.wait_for_url("**/item/**")
     check("página do item mostra vibes e o registro", "seu registro" in pg.inner_text("main").lower() and "abandonei" in pg.inner_text("main").lower())
@@ -143,7 +143,9 @@ with sync_playwright() as p:
 
     pg.click("nav >> text=Perfil"); pg.wait_for_url("**/perfil")
     ptxt = pg.inner_text("main")
-    check("perfil mostra metas e vibes", "meta de" in ptxt.lower() and "suas vibes" in ptxt.lower())
+    check("perfil mostra favoritos e a biblioteca", "favoritos" in ptxt.lower() and "biblioteca" in ptxt.lower())
+    pg.locator("a[aria-label=Ajustes]").click(); pg.wait_for_url("**/ajustes")
+    check("ajustes têm a meta do ano", "meta de" in pg.inner_text("main").lower())
     pg.screenshot(path="/tmp/hobby-shots/08_perfil.png", full_page=True)
 
     # exportar
@@ -158,7 +160,7 @@ with sync_playwright() as p:
     pg.screenshot(path="/tmp/hobby-shots/09_metricas.png")
 
     # excluir dados (LGPD)
-    pg.goto(BASE + "/perfil"); pg.click("text=Excluir meus dados"); pg.click("text=Confirmar exclusão"); pg.wait_for_timeout(300)
+    pg.goto(BASE + "/ajustes"); pg.click("text=Excluir meus dados"); pg.click("text=Confirmar exclusão"); pg.wait_for_timeout(300)
     check("excluir apaga biblioteca e eventos", pg.evaluate("localStorage.getItem('hobby:events')") is None and not json.loads(pg.evaluate("localStorage.getItem('hobby:v1')") or "{}").get("entries"))
     pg.goto(BASE + "/"); pg.wait_for_selector("[data-testid=cta-comecar]")
     check("depois de excluir, volta à apresentação", True)
@@ -174,7 +176,7 @@ with sync_playwright() as p:
 
     # sem rolagem horizontal em 360px
     pg.set_viewport_size({"width": 360, "height": 740})
-    for path in ["/importar", "/favoritos", "/descobrir", "/biblioteca", "/perfil", "/debug"]:
+    for path in ["/importar", "/favoritos", "/descobrir", "/biblioteca", "/perfil", "/ajustes", "/debug"]:
         pg.goto(BASE + path); pg.wait_for_timeout(250)
         over = pg.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
         check(f"sem rolagem horizontal em 360px: {path}", over <= 0, f"+{over}px")

@@ -1,6 +1,6 @@
 # Hobby
 
-Um perfil para registrar anime, mangá, jogos, filmes e séries, livros e álbuns, com recomendações que cruzam mídias ("porque você deu 5★ a X (anime), veja Y (jogo)").
+Um perfil para registrar anime, mangá, jogos, filmes e séries e livros, com recomendações que cruzam mídias ("porque você deu 5★ a X (anime), veja Y (jogo)").
 
 ## Rodar
 
@@ -12,7 +12,7 @@ cp .env.example .env.local   # opcional, veja "Variáveis" abaixo
 npm run dev                  # http://localhost:3000
 ```
 
-Sem nenhuma chave o app já funciona: AniList (anime, mangá), Open Library (livros), MusicBrainz (música) e Steam (jogos de PC) não pedem chave, e os dados ficam no aparelho. Para ver rápido sem importar nada, toque em **Ver com dados de exemplo** na tela inicial.
+Sem nenhuma chave o app já funciona: AniList (anime, mangá), Open Library (livros) e Steam (jogos de PC) não pedem chave, e os dados ficam no aparelho. Para ver rápido sem importar nada, toque em **Ver com dados de exemplo** na tela inicial.
 
 ### No celular
 
@@ -63,7 +63,9 @@ O `run.sh` sobe `e2e/mock.mjs` na porta 4010, que imita AniList, TMDB, IGDB, Ope
 ## Como funciona
 
 - **Local primeiro:** a biblioteca fica no aparelho (`src/lib/store.ts`). Com uma conta, `src/lib/cloud.ts` junta aparelho e nuvem sem apagar nada local (regras em `src/lib/sync.ts`).
-- **Catálogos:** as rotas `src/app/api/*` buscam no AniList, TMDB, IGDB (ou Steam, sem chave), Open Library e MusicBrainz. A busca ordena por relevância alternando as mídias e tem filtro por mídia. Cada fonte falha sozinha: se uma cair, as outras e o catálogo local continuam. `src/proxy.ts` limita requisições por IP.
+- **Telas:** Início (painel do dia; vazio, só importar e adicionar o primeiro item), Buscar, Descobrir, Social e Perfil. O Perfil reúne o cartão, a vitrine e a biblioteca (com Diário, Lançamentos, Listas e Estatísticas); conta, meta, tema e dados ficam em Ajustes (engrenagem). No celular o "+" fica no canto superior direito.
+- **Música saiu do app:** registros antigos de álbuns continuam guardados, mas não aparecem (`isActiveMedia` em `src/lib/types.ts`). O código do MusicBrainz e do Deezer ficou desligado em `src/lib/sources.ts`.
+- **Catálogos:** as rotas `src/app/api/*` buscam no AniList, TMDB, IGDB (ou Steam, sem chave) e Open Library. A busca ordena por relevância alternando as mídias e tem filtro por mídia. Cada fonte falha sozinha: se uma cair, as outras e o catálogo local continuam. `src/proxy.ts` limita requisições por IP.
 - **Importação:** AniList (nome de usuário), MyAnimeList (`animelist.xml`/`.gz`), Letterboxd (CSVs do export) e Goodreads ou StoryGraph (CSV, livros achados no Open Library). Os arquivos são lidos no aparelho. No primeiro uso dá para escrever os favoritos ("Dark, Persona 5, Kafka à beira-mar") e cada um é buscado nas fontes reais.
 - **Recomendação** (`src/lib/recommend.ts`, `src/lib/rec/`):
   1. Cada obra tem de 3 a 6 "vibes" tiradas de um vocabulário comum (`src/lib/vibes.ts`).

@@ -62,7 +62,7 @@ with sync_playwright() as p:
     check("a tela reflete a nova ordem", "Hades" in pg.locator("ul li").nth(1).inner_text())
 
     # ---- CSV
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
     with pg.expect_download() as dl:
         pg.get_by_role("button", name="Exportar planilha (CSV)").click()
     d = dl.value

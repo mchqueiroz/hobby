@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "@phosphor-icons/react";
+import { Compass, House, MagnifyingGlass, Plus, UserCircle, UsersThree } from "@phosphor-icons/react";
 import { useCloud } from "@/lib/cloud";
 import { useNovidades } from "@/lib/novidades";
 import Link from "next/link";
@@ -20,7 +20,8 @@ const ShellCtx = createContext<Ctx>({ openRegister: () => {}, toast: () => {} })
 export const useShell = () => useContext(ShellCtx);
 
 const BARE = ["/", "/importar", "/favoritos", "/privacidade", "/termos"];
-const LIB_PATHS = ["/biblioteca", "/diario", "/lancamentos", "/listas", "/estatisticas", "/retrospectiva"];
+// a biblioteca agora mora dentro do Perfil: estas telas marcam a aba Perfil
+const PROFILE_PATHS = ["/perfil", "/ajustes", "/biblioteca", "/diario", "/lancamentos", "/listas", "/estatisticas", "/retrospectiva"];
 const SOCIAL_PATHS = ["/comunidade", "/u/"];
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -67,16 +68,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <ShellCtx.Provider value={value}>
       <main id="conteudo" className={bare ? "app bare" : "app"}><div className="page" key={path}>{children}</div></main>
       {!bare && (
-        <div className="tabbar">
-          <nav aria-label="Principal">
-            <Link href="/inicio" aria-current={path.startsWith("/inicio") ? "page" : undefined}>Início</Link>
-            <Link href="/biblioteca" aria-current={LIB_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}>Biblioteca</Link>
-            <button type="button" className="plus" aria-label="Registrar um item" onClick={() => openRegister()}><Plus size={24} weight="bold" aria-hidden="true" /></button>
-            <Link href="/descobrir" aria-current={path.startsWith("/descobrir") ? "page" : undefined}>Descobrir</Link>
-            <Link href="/comunidade" aria-current={SOCIAL_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}>Social{novidades > 0 && <><span className="dot" aria-hidden="true" /><span className="sr"> ({novidades} {novidades === 1 ? "novidade" : "novidades"})</span></>}</Link>
-            <Link href="/perfil" aria-current={path.startsWith("/perfil") ? "page" : undefined}>Perfil</Link>
-          </nav>
-        </div>
+        <>
+          {/* no celular o "+" fica sozinho no canto superior direito; no computador vira "Registrar" no menu lateral */}
+          <button type="button" className="plus-top" aria-label="Registrar um item" onClick={() => openRegister()}><Plus size={22} weight="bold" aria-hidden="true" /></button>
+          <div className="tabbar">
+            <nav aria-label="Principal">
+              <button type="button" className="plus" aria-label="Registrar um item" onClick={() => openRegister()}><Plus size={20} weight="bold" aria-hidden="true" /></button>
+              <Link href="/inicio" aria-current={path.startsWith("/inicio") ? "page" : undefined}><House size={22} weight={path.startsWith("/inicio") ? "fill" : "regular"} aria-hidden="true" />Início</Link>
+              <Link href="/buscar" aria-current={path.startsWith("/buscar") ? "page" : undefined}><MagnifyingGlass size={22} weight={path.startsWith("/buscar") ? "bold" : "regular"} aria-hidden="true" />Buscar</Link>
+              <Link href="/descobrir" aria-current={path.startsWith("/descobrir") ? "page" : undefined}><Compass size={22} weight={path.startsWith("/descobrir") ? "fill" : "regular"} aria-hidden="true" />Descobrir</Link>
+              <Link href="/comunidade" aria-current={SOCIAL_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}><UsersThree size={22} weight={SOCIAL_PATHS.some((p) => path.startsWith(p)) ? "fill" : "regular"} aria-hidden="true" />Social{novidades > 0 && <><span className="dot" aria-hidden="true" /><span className="sr"> ({novidades} {novidades === 1 ? "novidade" : "novidades"})</span></>}</Link>
+              <Link href="/perfil" aria-current={PROFILE_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}><UserCircle size={22} weight={PROFILE_PATHS.some((p) => path.startsWith(p)) ? "fill" : "regular"} aria-hidden="true" />Perfil</Link>
+            </nav>
+          </div>
+        </>
       )}
       {storageProblem && (
         <div role="alert" data-testid="aviso-armazenamento" className="card" style={{ position: "fixed", left: 12, right: 12, top: 12, zIndex: 60, borderColor: "var(--danger)" }}>

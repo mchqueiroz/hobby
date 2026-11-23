@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "@phosphor-icons/react";
+import { Camera, Check, GearSix, ImageSquare } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { badges, bridgeVibes, dna, favorites, persona, showcase, weeklyStreak, memberSince } from "@/lib/insights";
@@ -38,7 +38,8 @@ export function Hero({ lib, counts, total }: { lib: Library; counts: Record<Medi
   return (
     <section className="hero card" aria-label="Sobre você">
       <div className="hero-banner" style={bannerStyle(profile.banner, autoBanner)} data-banner={profile.banner?.kind ?? "auto"}>
-        <button type="button" className="edit" onClick={() => setEditor("banner")} aria-label="Alterar banner">Banner</button>
+        <Link href="/ajustes" className="edit settings" aria-label="Ajustes"><GearSix size={20} weight="bold" aria-hidden="true" /></Link>
+        <button type="button" className="edit icon" onClick={() => setEditor("banner")} aria-label="Alterar banner"><ImageSquare size={19} weight="bold" aria-hidden="true" /></button>
       </div>
       <div className="hero-body">
       <div className="row" style={{ gap: 16, alignItems: "flex-end" }}>
@@ -48,9 +49,7 @@ export function Hero({ lib, counts, total }: { lib: Library; counts: Record<Medi
             {!profile.avatar && initials(name)}
           </div>
           <button type="button" className="edit" onClick={() => setEditor("avatar")} aria-label="Alterar foto de perfil">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" />
-            </svg>
+            <Camera size={20} weight="bold" aria-hidden="true" />
           </button>
         </div>
         <div style={{ flex: 1, minWidth: 0, paddingBottom: 2 }}>
@@ -139,13 +138,13 @@ export function Favorites({ lib }: { lib: Library }) {
   return (
     <section aria-labelledby="fav-t" data-testid="vitrine-perfil">
       <p className="label" id="fav-t">{pinned.length ? "Vitrine" : "Seus favoritos"}</p>
-      {!pinned.length && <p className="muted" style={{ fontSize: 12.5, margin: "-4px 0 8px" }}>Escolha você as 4 da vitrine: abra uma obra e toque em “Fixar na vitrine”.</p>}
-      <ul className="grid4" style={{ listStyle: "none" }}>
+      {!pinned.length && <p className="muted" style={{ fontSize: 12.5, margin: "-4px 0 10px" }}>Fixe até 4 obras pela página de cada uma.</p>}
+      <ul className="vitrine">
         {favs.map(({ entry, item }) => (
           <li key={item.id}>
             <Link href={`/item/${encodeURIComponent(item.id)}`}>
               <Cover item={item} w={120} h={168} fs={12} />
-              <strong style={{ display: "block", fontSize: 13, marginTop: 6 }}>{item.title}<span className="sr">, {MEDIA_LABEL[item.media]}</span></strong>
+              <strong>{item.title}<span className="sr">, {MEDIA_LABEL[item.media]}</span></strong>
             </Link>
             <Rating value={entry.rating} size={12} />
           </li>

@@ -106,3 +106,13 @@ describe("vitrine e fila no store", () => {
     expect(store.toggleQueue(a.id)).toBe(false);
   });
 });
+
+describe("música saiu do app", () => {
+  it("registro antigo de música fica guardado, mas some das telas", async () => {
+    const { getItem } = await import("../recommend");
+    const l = lib([[item("deezer:1", "musica"), { rating: 5 }], [item("anilist:1", "anime"), {}]]);
+    expect(getItem(l, "deezer:1")).toBeUndefined();
+    expect(l.entries["deezer:1"]).toBeDefined();
+    expect(allRows(l).map((r) => r.item.id)).toEqual(["anilist:1"]);
+  });
+});

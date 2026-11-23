@@ -24,10 +24,10 @@ def mklib(entries):  # entries: id -> (rating, extra)
 
 def seed(pg, data):
     pg.evaluate("d => localStorage.setItem('hobby:v1', JSON.stringify(d))", data)
-    pg.reload(); pg.wait_for_selector("section.hero")
+    pg.reload(); pg.wait_for_selector("h1")
 
 def signup(pg, email):
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
     pg.get_by_test_id("conta").get_by_role("tab", name="Criar conta").click()
     pg.fill("#conta-email", email); pg.fill("#conta-senha", "senhaboa1")
     pg.get_by_test_id("conta").locator("button[type=submit]").click()
@@ -60,7 +60,7 @@ with sync_playwright() as p:
     HADES, DN, BEBOP, PARASITA, WITCHER = "seed:jogo:hades", "seed:anime:death-note", "seed:anime:cowboy-bebop", "seed:filme:parasita", "seed:jogo:the-witcher-3"
     # ---------- Ana ----------
     _, ana = newpage()
-    ana.goto(BASE + "/perfil"); ana.wait_for_selector("section.hero")
+    ana.goto(BASE + "/ajustes"); ana.wait_for_selector("h1")
     seed(ana, mklib({HADES: (5, {"review": "segredo da Ana"}), DN: (4, {}), BEBOP: (5, {}), PARASITA: (4, {})}))
     signup(ana, "ana@ex.com")
 
@@ -79,7 +79,7 @@ with sync_playwright() as p:
 
     # ---------- Bruno ----------
     _, bru = newpage()
-    bru.goto(BASE + "/perfil"); bru.wait_for_selector("section.hero")
+    bru.goto(BASE + "/ajustes"); bru.wait_for_selector("h1")
     seed(bru, mklib({HADES: (5, {}), DN: (4, {}), BEBOP: (2, {}), WITCHER: (4, {})}))
     signup(bru, "bruno@ex.com")
     publish(bru, "bruno_x")
@@ -118,12 +118,12 @@ with sync_playwright() as p:
     bru.goto(BASE + "/u/ana_dev"); bru.wait_for_selector("[data-testid=atividade]")
     check("a resenha aparece na página pública", "segredo da Ana" in bru.get_by_test_id("atividade").inner_text())
 
-    ana.goto(BASE + "/perfil"); ana.wait_for_selector("section.hero")
+    ana.goto(BASE + "/ajustes"); ana.wait_for_selector("h1")
     ana.evaluate("""() => { const d = JSON.parse(localStorage.getItem('hobby:v1'));
       d.entries['seed:filme:parasita'].rating = 2; d.ts['e:seed:filme:parasita'] = Date.now() + 10000;
       delete d.entries['seed:anime:cowboy-bebop']; d.ts['e:seed:anime:cowboy-bebop'] = Date.now() + 10000;
       localStorage.setItem('hobby:v1', JSON.stringify(d)); }""")
-    ana.reload(); ana.wait_for_selector("section.hero")
+    ana.reload(); ana.wait_for_selector("h1")
     ok = until(lambda: len(act_of("ana_dev")) == 3 and any(r["item_id"] == PARASITA and float(r["rating"]) == 2 for r in act_of("ana_dev")))
     check("mudar nota e remover item atualiza a atividade pública", ok, str([(r["item_id"], r["rating"]) for r in act_of("ana_dev")]))
 
@@ -143,7 +143,7 @@ with sync_playwright() as p:
 
     # ---------- perfil privado não pode seguir ----------
     _, car = newpage()
-    car.goto(BASE + "/perfil"); car.wait_for_selector("section.hero")
+    car.goto(BASE + "/ajustes"); car.wait_for_selector("h1")
     signup(car, "carla@ex.com")
     car.goto(BASE + "/comunidade"); car.wait_for_selector("#pub-handle")
     car.fill("input[aria-label='Buscar pessoas']", "bruno")
@@ -159,7 +159,7 @@ with sync_playwright() as p:
     check("quem despublicou sai da lista de seguidos", "ana_dev" not in bru.locator("main").inner_text().lower().split("quem você segue")[1].split("o que estão fazendo")[0])
 
     # ---------- excluir conta apaga o social ----------
-    ana.goto(BASE + "/perfil"); ana.wait_for_selector("section.hero")
+    ana.goto(BASE + "/ajustes"); ana.wait_for_selector("h1")
     ana.get_by_role("button", name="Excluir minha conta").click()
     ana.get_by_role("button", name="Apagar conta e dados").click()
     ana.wait_for_selector("#conta-email", timeout=8000)

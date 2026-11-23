@@ -56,17 +56,15 @@ export default function Inicio() {
   if (!ready) return null;
   if (rows.length === 0) {
     return (
-      <>
-        <Header title="Bem-vindo ao Hobby" sub="Comece pelo que você já viu, leu ou jogou" />
-        <section className="card mt16" data-testid="boas-vindas">
-          <p style={{ fontSize: 15 }}>Sua biblioteca ainda está vazia. Três jeitos de começar:</p>
-          <ul className="stack gap8 mt12" style={{ listStyle: "none", padding: 0 }}>
-            <li><button type="button" className="btn" onClick={() => openRegister()}>Registrar o primeiro item</button></li>
-            <li><Link href="/importar" className="btn ghost">Importar do AniList, MyAnimeList ou Letterboxd</Link></li>
-            <li><Link href="/favoritos" className="btn ghost">Escolher favoritos de jogos e filmes</Link></li>
-          </ul>
-        </section>
-      </>
+      <section className="welcome" data-testid="boas-vindas" aria-labelledby="bv-t">
+        <div className="word">hobby</div>
+        <h1 id="bv-t">Comece sua biblioteca</h1>
+        <p className="sub">Traga o histórico de onde você já registra ou adicione a primeira obra.</p>
+        <div className="welcome-actions">
+          <Link href="/importar" className="btn">Importar histórico</Link>
+          <button type="button" className="btn ghost" onClick={() => openRegister()}>Adicionar o primeiro item</button>
+        </div>
+      </section>
     );
   }
 

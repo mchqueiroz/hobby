@@ -38,7 +38,7 @@ with sync_playwright() as p:
     pg.goto(B+"/biblioteca"); pg.wait_for_selector("h1")
     pg.click("text=Época, estilo e ordem"); pg.wait_for_timeout(200)
     pg.locator("details").get_by_role("button", name="Switch").first.click(); pg.wait_for_timeout(300)
-    lst=pg.inner_text("main")
+    lst=pg.inner_text("ul.cols2")
     chk("Hades" in lst and "Cowboy Bebop" not in lst, "filtro de plataforma mostra só o jogo no Switch")
 
     # tempo dedicado

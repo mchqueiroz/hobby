@@ -21,7 +21,8 @@ with sync_playwright() as p:
     check("apresentação sem menu inferior", pg.locator('nav[aria-label="Principal"]').count() == 0)
     check("links de privacidade e termos", pg.get_by_role("link", name="Privacidade").count() >= 1 and pg.get_by_role("link", name="Termos de uso").count() >= 1)
     pg.goto(BASE + "/inicio"); pg.wait_for_selector("[data-testid=boas-vindas]")
-    check("Início vazio mostra boas-vindas", pg.get_by_role("button", name="Registrar o primeiro item").count() == 1)
+    bv = pg.get_by_test_id("boas-vindas")
+    check("Início vazio mostra só importar e adicionar o primeiro item", bv.get_by_role("link", name="Importar histórico").count() == 1 and bv.get_by_role("button", name="Adicionar o primeiro item").count() == 1 and bv.locator("a, button").count() == 2)
     pg.goto(BASE + "/privacidade"); pg.wait_for_selector("h1")
     check("página de privacidade", "LGPD" in pg.locator("main").inner_text() or "LGPD" in pg.locator("body").inner_text())
     pg.goto(BASE + "/termos"); pg.wait_for_selector("h1")
@@ -88,10 +89,9 @@ with sync_playwright() as p:
     check("total salvo", pg.evaluate(LIB)["seed:anime:death-note"].get("total") == 10)
     check("barra no editor", pg.locator("[role=progressbar]").count() == 1)
 
-    # conquistas no perfil e barra na biblioteca
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("[data-testid=conquistas]")
-    check("9 conquistas listadas", pg.locator("[data-testid=conquistas] li").count() == 9)
-    check("conquista 'Primeiro passo' concluída com os dados de exemplo", pg.locator("[data-testid=conquistas] li[data-done=true]", has_text="Primeiro passo").count() == 1)
+    # perfil sem conquistas; barra de progresso na biblioteca do perfil
+    pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
+    check("perfil não tem mais conquistas nem desafios", pg.locator("[data-testid=conquistas]").count() == 0 and pg.locator("ul.badges").count() == 0)
     pg.goto(BASE + "/biblioteca"); pg.get_by_role("button", name="Em andamento").click()
     check("barra de progresso na biblioteca", pg.locator("ul [role=progressbar]").count() >= 1)
 

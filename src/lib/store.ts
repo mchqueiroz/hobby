@@ -504,8 +504,6 @@ export function loadDemo() {
     ["seed:livro:dom-casmurro", "concluido", 4.5],
     ["seed:livro:crime-e-castigo", "concluido", 4],
     ["seed:livro:neuromancer", "quero"],
-    ["seed:musica:kind-of-blue", "concluido", 5],
-    ["seed:musica:clube-da-esquina", "concluido", 4.5],
   ];
   const now = Date.now();
   const entries: Record<string, Entry> = {};

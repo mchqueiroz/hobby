@@ -34,11 +34,11 @@ with sync_playwright() as p:
     pg.goto(BASE + "/importar"); pg.click("text=Ver com dados de exemplo"); pg.wait_for_url("**/descobrir")
 
     # navegação da biblioteca
-    pg.goto(BASE + "/biblioteca")
-    for label, url in [("Diário", "/diario"), ("Listas", "/listas"), ("Estatísticas", "/estatisticas"), ("Itens", "/biblioteca")]:
-        pg.click(f'nav[aria-label="Biblioteca"] >> text={label}'); pg.wait_for_url("**" + url)
-        check(f"subnav leva a {label}", pg.locator(f'nav[aria-label="Biblioteca"] a[aria-current="page"]').inner_text() == label)
-    check("aba Biblioteca continua marcada nas subpáginas", True)
+    pg.goto(BASE + "/perfil")
+    for label, url in [("Diário", "/diario"), ("Listas", "/listas"), ("Estatísticas", "/estatisticas"), ("Biblioteca", "/perfil")]:
+        pg.click(f'nav[aria-label="Seções do perfil"] >> text={label}'); pg.wait_for_url("**" + url)
+        check(f"subnav leva a {label}", pg.locator(f'nav[aria-label="Seções do perfil"] a[aria-current="page"]').inner_text() == label)
+        check(f"aba Perfil marcada em {label}", pg.locator('.tabbar a[aria-current="page"]').inner_text().strip() == "Perfil")
 
     # resenha e data na página da obra
     pg.goto(HADES); pg.wait_for_selector("#resenha")
@@ -84,7 +84,7 @@ with sync_playwright() as p:
     # estatísticas
     pg.goto(BASE + "/estatisticas"); pg.wait_for_selector("text=Por mídia")
     txt = pg.inner_text("main")
-    check("estatísticas mostram total de 22 itens", "22" in txt and "itens" in txt, txt[:120])
+    check("estatísticas mostram total de 20 itens", "20" in txt and "itens" in txt, txt[:120])
     check("estatísticas mostram resenhas", "1" in txt and "resenha" in txt)
     check("gráfico por mês tem descrição acessível", pg.locator('[role=img][aria-label^="Concluídos por mês"]').count() == 1)
     check("sem rolagem horizontal no celular", pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth"))

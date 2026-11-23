@@ -21,11 +21,11 @@ with sync_playwright() as p:
     viol = []
     pg.on("console", lambda m: viol.append(m.text) if "Content Security Policy" in m.text or "Refused to" in m.text else None)
     pg.on("pageerror", lambda e: viol.append(str(e)))
-    for path in ["/", "/inicio", "/descobrir", "/biblioteca", "/perfil", "/comunidade", "/item/seed%3Ajogo%3Ahades", "/privacidade"]:
+    for path in ["/", "/inicio", "/descobrir", "/biblioteca", "/perfil", "/ajustes", "/comunidade", "/item/seed%3Ajogo%3Ahades", "/privacidade"]:
         pg.goto(BASE + path); pg.wait_for_load_state("networkidle")
     check("nenhuma violação de CSP nas páginas principais", not viol, "; ".join(viol)[:300])
     # conta no mock (connect-src precisa liberar o endereço do Supabase) e tema (script inline)
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
     cx = pg.get_by_test_id("conta"); cx.get_by_role("tab", name="Criar conta").click()
     pg.fill("#conta-email", "csp@ex.com"); pg.fill("#conta-senha", "senhaboa1"); cx.locator("button[type=submit]").click()
     ok = True

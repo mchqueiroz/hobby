@@ -177,16 +177,6 @@ describe("recomendação: franquia, autor, explicação e aposta", () => {
     expect(recommend(withWant, { fromWatchlist: true }).map((r) => r.item.id)).toContain(sequel.id);
   });
 
-  it("outro álbum do mesmo artista sobe, e o motivo diz isso", () => {
-    const mine = lib([[id("musica", "ok-computer"), "concluido", 5], [id("anime", "death-note"), "concluido", 4]]);
-    const kidA = mk("Kid A", "musica", { vibes: ["dançante"], author: "Radiohead" });
-    const outro = mk("Outro Álbum", "musica", { vibes: ["dançante"], author: "Fulano" });
-    const r = recommend(mine, { pool: [kidA, outro], count: 5, perMedia: 5 });
-    expect(r[0].item.title).toBe("Kid A");
-    expect(r[0].reason).toBe("Porque você deu 5★ a OK Computer (álbum), do mesmo artista.");
-    expect(r.map((x) => x.item.title)).not.toContain("Outro Álbum");
-  });
-
   it("nota baixa para um autor pesa contra os outros livros dele", () => {
     const mine = lib([[id("livro", "1984"), "concluido", 1], [id("livro", "o-hobbit"), "concluido", 5]]);
     const r = recommend(mine, { pool: SEED_BOOKS_BY_ORWELL_AND_OTHERS(), count: 5, perMedia: 5 }).map((x) => x.item.title);

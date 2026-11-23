@@ -2,6 +2,7 @@ import { SEED, SEED_BY_ID, norm, titleKey } from "./catalog";
 import { indexFranchises, inKnownFranchise } from "./franchise";
 import { DEFAULT_PARAMS, rankWithDiversity, scoreAll, buildContext, type Interaction, type Params } from "./rec/engine";
 import type { Entry, Item, Library, Media } from "./types";
+import { isActiveMedia } from "./types";
 
 export interface Recommendation {
   item: Item;
@@ -31,8 +32,10 @@ export interface RecommendOptions {
   bet?: boolean;
 }
 
+/** A obra de um registro. Obras de mídias que saíram do app (música) não aparecem, mas continuam guardadas. */
 export function getItem(lib: Library, id: string): Item | undefined {
-  return lib.items[id] ?? SEED_BY_ID[id];
+  const it = lib.items[id] ?? SEED_BY_ID[id];
+  return it && isActiveMedia(it.media) ? it : undefined;
 }
 
 /**

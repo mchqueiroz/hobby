@@ -11,7 +11,7 @@ def check(name, cond, extra=""):
     if not cond: fails.append(name)
     print(("PASS " if cond else "FAIL ") + name + (f"  [{extra}]" if extra and not cond else ""))
 
-PAGES = ["/", "/privacidade", "/termos", "/inicio", "/estatisticas", "/descobrir", "/biblioteca", "/buscar", "/diario", "/listas", "/estatisticas", "/retrospectiva", "/perfil", "/comunidade", "/importar",
+PAGES = ["/", "/privacidade", "/termos", "/inicio", "/estatisticas", "/descobrir", "/biblioteca", "/buscar", "/diario", "/listas", "/estatisticas", "/retrospectiva", "/perfil", "/ajustes", "/comunidade", "/importar",
          "/item/" + urllib.parse.quote("seed:jogo:hades", safe=""), "/item/" + urllib.parse.quote("seed:anime:attack-on-titan", safe=""), "/nao-existe"]
 
 def scan(pg, label):

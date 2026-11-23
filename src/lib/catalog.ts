@@ -125,31 +125,11 @@ const LIVROS: Row[] = [
   ["O Alienista", 1882, ["psicológico", "político", "filosófico", "humor leve"], true, "Machado de Assis"],
 ];
 
-const MUSICAS: Row[] = [
-  ["OK Computer", 1997, ["introspectivo", "melancólico", "futurista", "filosófico", "sombrio"], false, "Radiohead"],
-  ["The Dark Side of the Moon", 1973, ["filosófico", "psicológico", "introspectivo", "narrativa densa", "melancólico"], false, "Pink Floyd"],
-  ["Kind of Blue", 1959, ["introspectivo", "noir", "urbano", "melancólico"], false, "Miles Davis"],
-  ["To Pimp a Butterfly", 2015, ["político", "urbano", "drama humano", "narrativa densa", "energético"], false, "Kendrick Lamar"],
-  ["Thriller", 1982, ["dançante", "energético", "urbano", "sobrenatural"], false, "Michael Jackson"],
-  ["Abbey Road", 1969, ["romance", "slice of life", "aventura", "introspectivo"], false, "The Beatles"],
-  ["Nevermind", 1991, ["energético", "sombrio", "coming of age", "psicológico"], false, "Nirvana"],
-  ["Random Access Memories", 2013, ["dançante", "futurista", "ficção científica", "romance", "energético"], false, "Daft Punk"],
-  ["Rumours", 1977, ["romance", "drama humano", "melancólico", "introspectivo"], false, "Fleetwood Mac"],
-  ["Back to Black", 2006, ["melancólico", "romance", "noir", "drama humano"], false, "Amy Winehouse"],
-  ["Illmatic", 1994, ["urbano", "crime", "drama humano", "sombrio", "narrativa densa"], false, "Nas"],
-  ["Currents", 2015, ["introspectivo", "psicológico", "dançante", "melancólico"], false, "Tame Impala"],
-  ["Clube da Esquina", 1972, ["introspectivo", "melancólico", "slice of life", "coming of age"], true, "Milton Nascimento e Lô Borges"],
-  ["Tropicália: ou Panis et Circencis", 1968, ["político", "humor leve", "aventura", "energético"], true, "Vários artistas"],
-  ["Sobrevivendo no Inferno", 1997, ["político", "urbano", "sobrevivência", "sombrio", "crime", "drama humano"], true, "Racionais MC's"],
-  ["Elis & Tom", 1974, ["romance", "introspectivo", "melancólico", "slice of life"], true, "Elis Regina e Tom Jobim"],
-  ["Selvagem?", 1986, ["energético", "dançante", "político", "humor leve"], true, "Os Paralamas do Sucesso"],
-];
 
 export const SEED: Item[] = [
   ...make("anime", ANIME),
   ...make("manga", MANGAS),
   ...make("livro", LIVROS),
-  ...make("musica", MUSICAS),
   ...make("jogo", JOGOS),
   ...make("filme", FILMES),
 ];

@@ -44,7 +44,7 @@ export default function ItemPage() {
 
   return (
     <ObraTheme item={item}>
-      <div className="row between"><Link href="/biblioteca" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Voltar</Link><span className="word" style={{ fontSize: 18 }}>hobby</span></div>
+      <div className="row"><Link href="/biblioteca" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Voltar</Link></div>
 
       <div className="row mt16" style={{ alignItems: "flex-end", gap: 16 }}>
         <Cover item={item} w={130} h={184} fs={16} />

@@ -93,7 +93,7 @@ export function RegisterSheet({ initial, onClose }: { initial?: Item; onClose: (
           <>
             <label className="label" htmlFor="busca" style={{ marginTop: 14 }}>Buscar</label>
             <input
-              id="busca" ref={input} className="field" value={q} placeholder="Nome do anime, mangá, jogo, filme, série, livro ou álbum"
+              id="busca" ref={input} className="field" value={q} placeholder="Nome do anime, mangá, jogo, filme, série ou livro"
               onChange={(e) => setQ(e.target.value)} autoComplete="off"
             />
             <ul style={{ listStyle: "none", marginTop: 10 }}>

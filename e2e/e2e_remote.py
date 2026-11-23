@@ -12,13 +12,11 @@ def events(): return json.load(urllib.request.urlopen(MOCK + "/__events"))
 # API direta
 r = api("/api/search?q=dune")
 ids = [i["id"] for i in r["items"]]
-check("search junta as 6 mídias", ids == ["anilist:777001", "anilist:manga:888001", "openlibrary:OL777W", "musicbrainz:11111111-1111-4111-8111-111111111111", "igdb:119133", "tmdb:movie:438631", "tmdb:tv:85552"], str(ids))
-check("search: sources ok (Steam desligada quando há IGDB)", r["sources"] == {"tmdb": "ok", "igdb": "ok", "steam": "off", "anilist": "ok", "openlibrary": "ok", "musicbrainz": "ok"}, str(r["sources"]))
+check("search junta as 5 mídias (música saiu do app)", ids == ["anilist:777001", "anilist:manga:888001", "openlibrary:OL777W", "igdb:119133", "tmdb:movie:438631", "tmdb:tv:85552"], str(ids))
+check("search: sources ok (Steam desligada quando há IGDB)", r["sources"] == {"tmdb": "ok", "igdb": "ok", "steam": "off", "anilist": "ok", "openlibrary": "ok", "musicbrainz": "off"}, str(r["sources"]))
 mg = next(i for i in r["items"] if i["id"] == "anilist:manga:888001")
 check("mangá mapeado (mídia, id com tipo)", mg["media"] == "manga" and "ficção científica" in mg["vibes"], str(mg))
-al = next(i for i in r["items"] if i["id"].startswith("musicbrainz:"))
-check("álbum mapeado (artista, ano, capa, vibes)", al["media"] == "musica" and al["author"] == "Banda Mock" and al["year"] == 1997 and "coverartarchive.org" in al["cover"] and len(al["vibes"]) > 0, str(al))
-check("álbum ao vivo descartado", not any("Ao Vivo" in i["title"] for i in r["items"]))
+check("nenhum álbum na busca", not any(i["media"] == "musica" for i in r["items"]))
 bk = next(i for i in r["items"] if i["id"] == "openlibrary:OL777W")
 check("livro mapeado (autor, ano, capa, vibes, nota)", bk["media"] == "livro" and bk["author"] == "Frank Mock" and bk["year"] == 1949 and "covers.openlibrary.org" in bk["cover"] and "ficção científica" in bk["vibes"] and bk["quality"] == 8.2, str(bk))
 tm = next(i for i in r["items"] if i["id"] == "tmdb:movie:438631")
@@ -26,13 +24,10 @@ check("TMDB mapeado (filme, ano, vibes)", tm["media"] == "filme" and tm["year"] 
 check("pessoa do TMDB descartada", not any("777" == i["id"].split(":")[-1] for i in r["items"]))
 r = api("/api/search?q=boom")
 check("TMDB 500 não derruba as outras fontes", r["sources"]["tmdb"] == "error" and r["sources"]["igdb"] == "ok", str(r["sources"]))
-r = api("/api/search?q=boommb")
-check("MusicBrainz 503 não derruba as outras fontes", r["sources"]["musicbrainz"] == "error" and r["sources"]["igdb"] == "ok" and r["sources"]["openlibrary"] == "ok", str(r["sources"]))
 check("q curto devolve vazio", api("/api/search?q=a")["items"] == [])
 d = api("/api/discover?vibes=" + urllib.request.quote("ficção científica,psicológico"))
 dids = sorted(i["id"] for i in d["items"])
-check("discover: álbum só com tag votada por várias pessoas", not any("Obscuro" in i["title"] for i in d["items"]))
-check("discover traz todas as fontes", dids == ["anilist:777002", "anilist:manga:888002", "igdb:1942", "musicbrainz:22222222-2222-4222-8222-222222222222", "openlibrary:OL778W", "tmdb:movie:603", "tmdb:tv:1396"], str(dids))
+check("discover traz todas as fontes", dids == ["anilist:777002", "anilist:manga:888002", "igdb:1942", "openlibrary:OL778W", "tmdb:movie:603", "tmdb:tv:1396"], str(dids))
 check("discover ignora vibes inválidas", api("/api/discover?vibes=xxx")["items"] == [])
 
 with sync_playwright() as p:
@@ -73,8 +68,8 @@ with sync_playwright() as p:
         card.locator("a").first.click(); pg.wait_for_selector("text=Ergo Proxy")
         check("página do item remoto abre", pg.locator("text=Item não encontrado").count() == 0)
 
-    # liga consentimento no perfil
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("text=Ajude no teste do Hobby")
+    # liga consentimento nos ajustes
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("text=Ajude no teste do Hobby")
     pg.get_by_label("Aceito enviar métricas anônimas de uso").check()
     pg.goto(BASE + "/descobrir"); pg.wait_for_selector("li.card")
     pg.locator("button", has_text="Não é pra mim").first.click()

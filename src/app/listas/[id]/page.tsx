@@ -34,7 +34,7 @@ export default function ListaPage() {
 
   return (
     <>
-      <div className="row between"><Link href="/listas" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Listas</Link><span className="word" style={{ fontSize: 18 }}>hobby</span></div>
+      <div className="row"><Link href="/listas" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Listas</Link></div>
 
       {editing ? (
         <form className="row gap8 mt16" onSubmit={(e) => { e.preventDefault(); renameList(id, name); setEditing(false); }}>

@@ -1,8 +1,5 @@
 "use client";
 
-import { MagnifyingGlass } from "@phosphor-icons/react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useState, type CSSProperties } from "react";
 import { useCover } from "@/lib/covers";
 import type { Item, Media } from "@/lib/types";
@@ -83,16 +80,10 @@ export function ProgressBar({ value, total, label }: { value: number; total?: nu
 }
 
 export function Header({ title, sub }: { title: string; sub?: string }) {
-  const path = usePathname();
   return (
     <header className="hdr">
       <div className="word">hobby</div>
-      {path !== "/buscar" && (
-        <Link href="/buscar" className="hsearch" aria-label="Buscar">
-          <MagnifyingGlass size={21} weight="bold" aria-hidden="true" />
-        </Link>
-      )}
-      <h1 style={{ marginTop: 14 }}>{title}</h1>
+      <h1 style={{ marginTop: 18 }}>{title}</h1>
       {sub && <p className="sub">{sub}</p>}
     </header>
   );

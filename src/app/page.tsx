@@ -18,8 +18,8 @@ export default function Landing() {
       <p className="muted" style={{ fontSize: 13, marginTop: 10 }}>Grátis, sem anúncios e sem precisar de conta.</p>
 
       <div className="mt24" style={{ fontSize: 15, lineHeight: 1.6 }}>
-        <p>O Hobby guarda o que você assistiu, jogou, leu e ouviu num lugar só: filmes e séries, animes, mangás, jogos, livros e álbuns. Você dá nota, marca o episódio ou a página em que parou e vê o ano inteiro na retrospectiva.</p>
-        <p style={{ marginTop: 12 }}>As sugestões olham o seu gosto, não a mídia. Se você amou um anime sombrio, o próximo pode ser um jogo, um livro ou um disco, e o app diz por quê.</p>
+        <p>O Hobby guarda o que você assistiu, jogou e leu num lugar só: filmes e séries, animes, mangás, jogos e livros. Você dá nota, marca o episódio ou a página em que parou e vê o ano inteiro na retrospectiva.</p>
+        <p style={{ marginTop: 12 }}>As sugestões olham o seu gosto, não a mídia. Se você amou um anime sombrio, o próximo pode ser um jogo ou um livro, e o app diz por quê.</p>
         <p style={{ marginTop: 12 }}>Funciona sem conta, no seu aparelho. Dá para importar do AniList, do MyAnimeList e do Letterboxd, exportar tudo em JSON ou planilha e apagar quando quiser.</p>
       </div>
 

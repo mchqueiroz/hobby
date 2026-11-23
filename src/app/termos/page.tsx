@@ -13,7 +13,7 @@ export default function Termos() {
       <p className="sub">Última atualização: novembro de 2026.</p>
 
       <h2 className="label">O que é o Hobby</h2>
-      <p>Um app gratuito para registrar e descobrir filmes, séries, anime, mangá, livros, jogos e música. É um projeto em evolução e é oferecido como está, sem garantia de que ficará sempre disponível ou livre de erros.</p>
+      <p>Um app gratuito para registrar e descobrir filmes, séries, anime, mangá, livros e jogos. É um projeto em evolução e é oferecido como está, sem garantia de que ficará sempre disponível ou livre de erros.</p>
 
       <h2 className="label">Seu conteúdo</h2>
       <p>Resenhas, comentários e demais textos são de sua responsabilidade. Não publique conteúdo ofensivo, ilegal, spam ou que viole direitos de terceiros. Você continua dono do que escreve e nos autoriza apenas a exibi-lo conforme as opções de privacidade que você escolher.</p>

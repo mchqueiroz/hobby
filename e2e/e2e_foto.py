@@ -147,6 +147,7 @@ with sync_playwright() as p:
     pg.locator('[data-testid="file-banner"]').set_input_files(wide); pg.wait_for_selector("canvas.crop-banner")
     dlg.get_by_label("Horizontal").fill("0.4")
     dlg.get_by_role("button", name="Salvar").click(); pg.wait_for_selector("[role=dialog]", state="detached")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")  # o cartão para compartilhar fica nos Ajustes
     with pg.expect_download() as d: pg.get_by_role("button", name="Baixar imagem").click()
     path = d.value.path(); im = Image.open(path)
     check("cartão 1080x1350 gerado", im.size == (1080, 1350), str(im.size))
@@ -159,7 +160,7 @@ with sync_playwright() as p:
     check("cartão leva o banner enviado (não o degradê)", abs(bpx[0] - bpx[2]) > 40, str(bpx))
 
     # cartão sem foto nem banner
-    pg.evaluate("() => localStorage.removeItem('hobby:profile')"); pg.reload(); pg.wait_for_selector(".hero")
+    pg.evaluate("() => localStorage.removeItem('hobby:profile')"); pg.reload(); pg.wait_for_selector("h1")
     with pg.expect_download() as d: pg.get_by_role("button", name="Baixar imagem").click()
     im2 = Image.open(d.value.path()); im2.save(f"{OUT}/f8_cartao_padrao.png")
     check("cartão padrão (iniciais + degradê) também sai", im2.size == (1080, 1350))
@@ -171,6 +172,7 @@ with sync_playwright() as p:
     pg.locator('[data-testid="file-avatar"]').set_input_files(wide); pg.wait_for_selector("canvas.crop-avatar")
     dlg.get_by_role("button", name="Salvar").click(); pg.wait_for_selector("[role=dialog]", state="detached")
     check("foto salva antes de excluir", bool((profile(pg) or {}).get("avatar")))
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
     pg.get_by_role("button", name="Excluir meus dados").click()
     pg.get_by_role("button", name="Confirmar exclusão").click()
     pg.wait_for_timeout(400)

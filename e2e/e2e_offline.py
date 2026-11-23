@@ -19,13 +19,13 @@ with sync_playwright() as p:
     check("service worker ativo e controlando a página", True)
     pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")  # visita para entrar no cache
     pg.goto(BASE + "/biblioteca"); pg.wait_for_selector("h1"); pg.wait_for_timeout(500)
-    total = pg.locator("ul li").count()
+    total = pg.locator("ul.cols2 li").count()
     check("biblioteca tem itens online", total >= 10, str(total))
 
     ctx.set_offline(True)
     pg.reload(); pg.wait_for_selector("h1", timeout=8000)
-    check("biblioteca abre sem internet", pg.locator("h1").first.inner_text().strip().lower().startswith("biblioteca"))
-    check("os registros continuam lá offline", pg.locator("ul li").count() == total)
+    check("biblioteca (no perfil) abre sem internet", pg.locator("h1").first.inner_text().strip().lower() == "perfil")
+    check("os registros continuam lá offline", pg.locator("ul.cols2 li").count() == total)
     pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero", timeout=8000)
     check("outra tela já visitada também abre offline", pg.locator("section.hero").count() == 1)
     pg.goto(BASE + "/estatisticas")

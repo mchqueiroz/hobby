@@ -18,7 +18,7 @@ def lib(ids_ts):
 
 def seed(pg, data):
     pg.evaluate("d => localStorage.setItem('hobby:v1', JSON.stringify(d))", data)
-    pg.reload(); pg.wait_for_selector("section.hero")
+    pg.reload(); pg.wait_for_selector("h1")
 
 def local_ids(pg):
     return sorted(json.loads(pg.evaluate("localStorage.getItem('hobby:v1')"))["entries"].keys())
@@ -36,7 +36,7 @@ with sync_playwright() as p:
     ctx = b.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
     pg = ctx.new_page(); errs = []
     pg.on("pageerror", lambda e: errs.append(str(e)))
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
     check("cartão de conta aparece", conta(pg).count() == 1)
 
     # validações do formulário
@@ -61,7 +61,7 @@ with sync_playwright() as p:
     # aparelho B: já tinha um item próprio; ao entrar, junta com o da nuvem sem perder nenhum
     ctx2 = b.new_context(viewport={"width": 390, "height": 844}, locale="pt-BR")
     pb = ctx2.new_page(); pb.on("pageerror", lambda e: errs.append(str(e)))
-    pb.goto(BASE + "/perfil"); pb.wait_for_selector("section.hero")
+    pb.goto(BASE + "/ajustes"); pb.wait_for_selector("h1")
     seed(pb, lib({"seed:filme:parasita": 2000}))
     fill_login(pb, "ana@ex.com", "senhaboa1", "Entrar")
     conta(pb).locator("button[type=submit]").click()
@@ -82,7 +82,7 @@ with sync_playwright() as p:
     cur2["lib"]["ts"]["e:seed:jogo:celeste"] = 9_999_999_999_999
     post("/__putlib", {"email": "ana@ex.com", "data": cur2})
     pg.evaluate("""() => { const d = JSON.parse(localStorage.getItem('hobby:v1')); d.entries['seed:jogo:hollow-knight'] = {itemId:'seed:jogo:hollow-knight', status:'quero', at:3}; d.ts['e:seed:jogo:hollow-knight'] = 5000; localStorage.setItem('hobby:v1', JSON.stringify(d)); }""")
-    pg.reload(); pg.wait_for_selector("section.hero")
+    pg.reload(); pg.wait_for_selector("h1")
     conta(pg).get_by_role("button", name="Sincronizar agora").click()
     pg.wait_for_function("document.querySelector('[data-testid=sync-status]')?.textContent.startsWith('Sincronizado')")
     final = sorted(list(cloud()["libs"].values())[0]["data"]["lib"]["entries"])
@@ -101,7 +101,7 @@ with sync_playwright() as p:
     check("recupera quando o servidor volta", True)
 
     # sair mantém os dados locais; sessão persiste ao recarregar antes de sair
-    pg.reload(); pg.wait_for_selector("section.hero")
+    pg.reload(); pg.wait_for_selector("h1")
     pg.wait_for_selector("text=Você está em")
     check("sessão sobrevive a recarregar a página", True)
     conta(pg).get_by_role("button", name="Sair").click()

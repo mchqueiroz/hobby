@@ -24,17 +24,17 @@ with sync_playwright() as p:
         # perfil vazio
         pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
         t = pg.locator("main").inner_text()
-        check(f"{label}: perfil vazio orienta e não quebra", "Registre algumas obras" in t and pg.locator("text=Conquistas").count() == 1)
+        check(f"{label}: perfil vazio orienta e não quebra", "Registre algumas obras" in t)
+        pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
         check(f"{label}: cartão bloqueado sem registros", pg.get_by_role("button", name="Baixar imagem").is_disabled())
 
         pg.goto(BASE + "/importar"); pg.click("text=Ver com dados de exemplo"); pg.wait_for_url("**/descobrir")
         pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
         t = pg.locator("main").inner_text()
-        check(f"{label}: arquétipo e vibes", "Você curte" in t and "suas vibes" in t.lower())
+        check(f"{label}: arquétipo", "Você curte" in t)
         check(f"{label}: favoritos", pg.locator("#fav-t").count() == 1 and pg.locator("section[aria-labelledby=fav-t] li").count() >= 1)
-        check(f"{label}: conquistas listadas", pg.locator("ul.badges li").count() == 10)
-        check(f"{label}: ao menos uma conquistada", pg.locator("ul.badges li.badge.on").count() >= 1)
-        check(f"{label}: meta do ano continua", "meta de" in t.lower())
+        check(f"{label}: perfil sem conquistas e desafios", "Conquistas" not in t and "Desafios" not in t)
+        check(f"{label}: biblioteca dentro do perfil", pg.locator('nav[aria-label="Seções do perfil"] a[aria-current=page]').inner_text() == "Biblioteca" and pg.locator("ul.cols2 li").count() >= 10)
         check(f"{label}: sem rolagem horizontal", pg.evaluate("document.documentElement.scrollWidth <= innerWidth"))
 
         # nome
@@ -45,7 +45,9 @@ with sync_playwright() as p:
         pg.reload(); pg.wait_for_selector("section.hero")
         check(f"{label}: nome persiste", pg.locator("section.hero h2").inner_text() == "Michael Queiroz")
 
-        # cartão
+        # cartão e meta ficam nos Ajustes
+        pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
+        check(f"{label}: meta do ano nos ajustes", "meta de" in pg.locator("main").inner_text().lower())
         with pg.expect_download() as dl:
             pg.get_by_role("button", name="Baixar imagem").click()
         path = dl.value.path()
@@ -60,7 +62,8 @@ with sync_playwright() as p:
         check(f"{label}: conexões mostram TMDB e IGDB ativos", c.count("ativo\n") >= 3 and "desligado\nAniList" not in c and "desligado\nTMDB" not in c and "desligado\nIGDB" not in c, c)
         check(f"{label}: /api/status não vaza chave", "tmdbtoken" not in pg.evaluate("fetch('/api/status').then(r=>r.text())") and "csecret" not in pg.evaluate("fetch('/api/status').then(r=>r.text())"))
 
-        # contraste em claro e escuro
+        # contraste em claro e escuro (no perfil)
+        pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
         for scheme in ["light", "dark"]:
             pg.emulate_media(color_scheme=scheme); pg.reload(); pg.wait_for_selector("section.hero")
             odd = pg.evaluate("""() => { const o=[]; const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
@@ -72,6 +75,7 @@ with sync_playwright() as p:
         pg.emulate_media(color_scheme="light")
 
         # excluir apaga o nome
+        pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
         pg.click("text=Excluir meus dados"); pg.click("text=Confirmar exclusão"); pg.wait_for_timeout(300)
         check(f"{label}: excluir apaga o nome", pg.evaluate("localStorage.getItem('hobby:profile')") is None)
         check(f"{label}: sem erros", errs == [], str(errs))

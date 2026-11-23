@@ -35,7 +35,7 @@ export default function ListaCompartilhada() {
 
   return (
     <>
-      <div className="row between"><Link href="/listas" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Listas</Link><span className="word" style={{ fontSize: 18 }}>hobby</span></div>
+      <div className="row"><Link href="/listas" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Listas</Link></div>
       <p className="label mt16" style={{ margin: 0 }}>Lista compartilhada</p>
       <h1 style={{ marginTop: 6 }} data-testid="lista-compartilhada">{shared.name}</h1>
       <p className="sub">{shared.items.length === 1 ? "1 item" : `${shared.items.length} itens`}</p>

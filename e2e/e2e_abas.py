@@ -30,15 +30,15 @@ with sync_playwright() as p:
     # ---- duas abas
     A.goto(BASE + "/biblioteca"); A.wait_for_selector("h1")
     B.goto(BASE + "/biblioteca"); B.wait_for_selector("h1")
-    n0 = B.locator("ul li").count()
+    n0 = B.locator("ul.cols2 li").count()
     registrar(A, "celeste", "4")
-    B.wait_for_function(f"document.querySelectorAll('ul li').length === {n0 + 1}", timeout=6000)
-    check("aba B recebe o registro feito na aba A sem recarregar", B.locator("ul li").count() == n0 + 1)
-    registrar(B, "ok computer", "5")
-    A.wait_for_function(f"document.querySelectorAll('ul li').length === {n0 + 2}", timeout=6000)
-    check("aba A recebe o registro da aba B", A.locator("ul li").count() == n0 + 2)
+    B.wait_for_function(f"document.querySelectorAll('ul.cols2 li').length === {n0 + 1}", timeout=6000)
+    check("aba B recebe o registro feito na aba A sem recarregar", B.locator("ul.cols2 li").count() == n0 + 1)
+    registrar(B, "o nome da rosa", "5")
+    A.wait_for_function(f"document.querySelectorAll('ul.cols2 li').length === {n0 + 2}", timeout=6000)
+    check("aba A recebe o registro da aba B", A.locator("ul.cols2 li").count() == n0 + 2)
     ea, eb = ents(A), ents(B)
-    check("as duas abas terminam com tudo e iguais", "seed:jogo:celeste" in ea and "seed:musica:ok-computer" in ea and sorted(ea) == sorted(eb), f"{len(ea)} {len(eb)}")
+    check("as duas abas terminam com tudo e iguais", "seed:jogo:celeste" in ea and "seed:livro:o-nome-da-rosa" in ea and sorted(ea) == sorted(eb), f"{len(ea)} {len(eb)}")
 
     # registros simultâneos (cada aba grava o seu antes de ver o da outra) não se perdem
     A.evaluate("window.__a = 1"); 
@@ -48,7 +48,7 @@ with sync_playwright() as p:
     check("registros quase simultâneos nas duas abas se somam", ea["seed:anime:death-note"]["rating"] == 3 and ea["seed:anime:monster"]["rating"] == 2)
 
     # ---- excluir tudo numa aba esvazia a outra e nada ressuscita
-    A.goto(BASE + "/perfil"); A.wait_for_selector("text=Seus dados")
+    A.goto(BASE + "/ajustes"); A.wait_for_selector("text=Seus dados")
     A.get_by_role("button", name="Excluir meus dados").click(); A.get_by_role("button", name="Confirmar exclusão").click()
     B.wait_for_selector("text=Sua biblioteca está vazia", timeout=6000)
     check("excluir tudo numa aba esvazia a outra", B.locator("text=Sua biblioteca está vazia").count() == 1)

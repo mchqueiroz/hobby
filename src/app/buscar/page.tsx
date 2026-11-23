@@ -33,7 +33,7 @@ export default function Buscar() {
   if (!ready) return null;
   return (
     <>
-      <Header title="Buscar" sub="Anime, mangá, jogo, filme, série, livro ou álbum. Aperte / em qualquer tela para chegar aqui." />
+      <Header title="Buscar" sub="Anime, mangá, jogo, filme, série ou livro." />
       <label className="label" htmlFor="busca-global">Nome da obra</label>
       <input id="busca-global" ref={input} className="field" value={q} onChange={(e) => setQ(e.target.value)}
         placeholder="Ex.: Death Note, Hades, Duna" autoComplete="off" type="search" />

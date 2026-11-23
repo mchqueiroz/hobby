@@ -23,7 +23,7 @@ with sync_playwright() as p:
         pg=ctx.new_page()
         pg.goto(BASE+"/importar"); pg.fill("#user","mockuser"); pg.click("text=Importar anime"); pg.wait_for_selector("text=Importação concluída")
         print(scheme,"importar",pg.evaluate(JS)); pg.screenshot(path=f"/tmp/{scheme}_importar.png")
-        pg.goto(BASE+"/perfil"); pg.wait_for_selector("text=Aparência")
+        pg.goto(BASE+"/ajustes"); pg.wait_for_selector("text=Aparência")
         print(scheme,"perfil",pg.evaluate(JS)); pg.screenshot(path=f"/tmp/{scheme}_perfil.png",full_page=True)
         pg.goto(BASE+"/descobrir"); pg.wait_for_selector("li.card")
         print(scheme,"descobrir",pg.evaluate(JS)); pg.screenshot(path=f"/tmp/{scheme}_descobrir.png")
@@ -32,7 +32,7 @@ with sync_playwright() as p:
         ctx.close()
     # override manual
     ctx=b.new_context(viewport={"width":390,"height":844},locale="pt-BR",color_scheme="light"); pg=ctx.new_page()
-    pg.goto(BASE+"/perfil"); pg.click("text=Escuro")
+    pg.goto(BASE+"/ajustes"); pg.click("text=Escuro")
     print("override:", pg.evaluate("[document.documentElement.dataset.theme, getComputedStyle(document.body).backgroundColor, localStorage.getItem('hobby:theme')]"))
     pg.reload(); print("persistiu:", pg.evaluate("getComputedStyle(document.body).backgroundColor"))
     pg.click("text=Automático"); print("auto:", pg.evaluate("[document.documentElement.dataset.theme ?? null, getComputedStyle(document.body).backgroundColor]"))

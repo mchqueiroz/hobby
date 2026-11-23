@@ -132,9 +132,15 @@ label.label { display: block; font-size: 13.5px; font-weight: 600; color: var(--
 .starinput .hits button { min-height: 44px; height: 100%; }
 
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: var(--paper); border-top: 1px solid var(--line); }
-.tabbar nav { max-width: 480px; margin: 0 auto; height: 78px; display: grid; grid-template-columns: repeat(6, 1fr); align-items: start; padding-top: 10px; }
-.tabbar a, .tabbar button.tab { text-align: center; font-size: 12px; font-weight: 500; color: var(--mute); padding: 8px 0; min-height: 44px; }
+.tabbar nav { max-width: 480px; margin: 0 auto; height: calc(68px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(5, 1fr); align-items: start; padding: 6px 8px env(safe-area-inset-bottom); }
+.tabbar a { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; font-weight: 550; color: var(--mute); padding: 6px 0; min-height: 52px; position: relative; }
 .tabbar a[aria-current="page"] { color: var(--ink); font-weight: 700; }
+.tabbar .dot { position: absolute; top: 4px; right: calc(50% - 16px); margin: 0; }
+.tabbar .plus { display: none; }
+/* "+" sozinho no canto superior direito, alinhado à coluna do app */
+.plus-top { position: fixed; z-index: 21; top: calc(env(safe-area-inset-top) + 10px); right: max(16px, calc((100vw - 480px) / 2 + 18px)); width: 44px; height: 44px; border-radius: 50%;
+  background: var(--ink); color: var(--paper); display: grid; place-items: center; box-shadow: 0 4px 14px rgb(0 0 0 / .14); transition: transform .12s ease; }
+.plus-top:active { transform: scale(.94); }
 .plus { justify-self: center; width: 50px; height: 50px; border-radius: 50%; background: var(--anime); color: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: -10px; box-shadow: 0 6px 16px color-mix(in srgb, var(--anime) 30%, transparent); }
 
 .backdrop { position: fixed; inset: 0; background: rgb(20 20 19 / .5); z-index: 40; }
@@ -190,6 +196,12 @@ textarea.field { resize: vertical; min-height: 110px; line-height: 1.45; font-fa
 
 .mb12 { margin-bottom: 12px; }
 
+/* boas-vindas: centralizado na tela, só dois caminhos */
+.welcome { min-height: calc(100dvh - 190px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 10px; }
+.welcome h1 { margin-top: 18px; }
+.welcome .sub { max-width: 30ch; margin-top: 0; }
+.welcome-actions { display: grid; gap: 10px; width: 100%; max-width: 320px; margin-top: 22px; }
+
 /* movimento leve; o bloco prefers-reduced-motion acima desliga tudo para quem prefere */
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes slideup { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
@@ -209,7 +221,10 @@ textarea.field { resize: vertical; min-height: 110px; line-height: 1.45; font-fa
   .app.bare { margin: 0 auto; }
   .tabbar { top: 0; right: auto; bottom: 0; width: 220px; border-top: 0; border-right: 1px solid var(--line); }
   .tabbar nav { max-width: none; height: auto; display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 28px 14px; }
-  .tabbar a { text-align: left; font-size: 15px; padding: 10px 14px; border-radius: 12px; display: flex; align-items: center; }
+  .tabbar a { flex-direction: row; gap: 12px; text-align: left; font-size: 15px; padding: 10px 14px; border-radius: 12px; min-height: 44px; }
+  .tabbar .dot { position: static; }
+  .plus-top { display: none; }
+  .tabbar .plus { display: inline-flex; }
   .tabbar a:hover { background: var(--field); }
   .tabbar a[aria-current="page"] { background: var(--field); }
   .tabbar .plus { order: -1; justify-self: auto; width: auto; height: 46px; border-radius: var(--radius); margin: 0 0 14px; font-size: 15px; font-weight: 650; box-shadow: none; }
@@ -229,6 +244,16 @@ textarea.field { resize: vertical; min-height: 110px; line-height: 1.45; font-fa
 .hero-banner .edit, .avatar-wrap .edit { position: absolute; display: grid; place-items: center; background: var(--paper); color: var(--ink);
   border: 1.5px solid var(--ink); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .hero-banner .edit { right: 10px; bottom: 10px; min-height: 44px; padding: 0 14px; border-radius: 22px; }
+.hero-banner .edit.settings { right: 62px; width: 44px; padding: 0; }
+.hero-banner .edit.icon { width: 44px; padding: 0; }
+/* vitrine: as 4 obras lado a lado, em proporção de pôster */
+.vitrine { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.vitrine .cover { width: 100% !important; height: auto !important; aspect-ratio: 5 / 7; }
+.vitrine strong { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 12px; line-height: 1.25; margin-top: 6px; }
+/* números por mídia do perfil: uma linha enquadrada, sem cartão */
+.statrow { list-style: none; display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 18px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
+.statrow b { display: block; font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: -0.03em; }
+.statrow span { display: block; font-size: 11.5px; color: var(--mute); margin-top: 2px; }
 .avatar-wrap { position: relative; width: 88px; height: 88px; margin-top: -44px; flex: none; }
 .avatar-wrap .avatar { width: 88px; height: 88px; font-size: 32px; border: 4px solid var(--card); background-size: cover; background-position: center; }
 .avatar-wrap .edit { right: -6px; bottom: -6px; width: 44px; height: 44px; border-radius: 50%; padding: 0; }

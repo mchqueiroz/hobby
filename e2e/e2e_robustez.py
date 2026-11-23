@@ -43,7 +43,7 @@ with sync_playwright() as p:
     ent = lambda: json.loads(pg.evaluate("localStorage.getItem('hobby:v1')") or '{"entries":{}}')["entries"]
     antes = len(ent())
     check("dados de exemplo carregados", antes >= 10, str(antes))
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("text=Seus dados")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("text=Seus dados")
     with pg.expect_download() as dl:
         pg.get_by_role("button", name="Exportar meus dados").click()
     path = dl.value.path()
@@ -72,7 +72,7 @@ with sync_playwright() as p:
     check("JSON de outro tipo é recusado", len(ent()) == antes + 1)
 
     # verbos por mídia: o botão acompanha o tipo da obra
-    for id_, verbo in [("seed:jogo:celeste", "jogar"), ("seed:livro:1984", "ler"), ("seed:musica:ok-computer", "ouvir"), ("seed:anime:attack-on-titan", "ver")]:
+    for id_, verbo in [("seed:jogo:celeste", "jogar"), ("seed:livro:1984", "ler"), ("seed:anime:attack-on-titan", "ver")]:
         pg.goto(BASE + "/item/" + urllib.request.quote(id_, safe="")); pg.wait_for_selector("h1")
         ok = pg.get_by_role("button", name="Quero " + verbo, exact=True).count() == 1 and pg.get_by_role("button", name="Quero ver", exact=True).count() == (1 if verbo == "ver" else 0)
         check(f"{id_.split(':')[1]} oferece 'Quero {verbo}'", ok, pg.locator("main").inner_text()[:120])

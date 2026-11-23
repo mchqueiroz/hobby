@@ -22,9 +22,9 @@ def mklib(rating, review=None):
     if review: e["review"] = review
     return {"items": {}, "dismissed": [], "goal": 80, "lists": {}, "entries": {HADES: e}, "ts": {f"e:{HADES}": 5000}}
 def seed(pg, d):
-    pg.evaluate("d => localStorage.setItem('hobby:v1', JSON.stringify(d))", d); pg.reload(); pg.wait_for_selector("section.hero")
+    pg.evaluate("d => localStorage.setItem('hobby:v1', JSON.stringify(d))", d); pg.reload(); pg.wait_for_selector("h1")
 def signup(pg, email):
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
     c = pg.get_by_test_id("conta"); c.get_by_role("tab", name="Criar conta").click()
     pg.fill("#conta-email", email); pg.fill("#conta-senha", "senhaboa1"); c.locator("button[type=submit]").click()
     pg.wait_for_function("document.querySelector('[data-testid=sync-status]')?.textContent.startsWith('Sincronizado')", timeout=8000)
@@ -56,7 +56,7 @@ with sync_playwright() as p:
     names = ["ana", "bruno", "carla", "dani", "eva"]
     pgs = {n: newpage() for n in names}
     for n, pg in pgs.items():
-        pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero"); seed(pg, mklib(4)); signup(pg, f"{n}@ex.com")
+        pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1"); seed(pg, mklib(4)); signup(pg, f"{n}@ex.com")
         publish(pg, f"{n}_x", False)
     ana, bru, car, dan, eva = (pgs[n] for n in names)
     prof = lambda n: next(r for r in cloud()["tables"]["profiles"] if r["handle"] == f"{n}_x")

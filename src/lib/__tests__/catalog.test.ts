@@ -17,8 +17,9 @@ describe("catálogo base", () => {
     for (const i of SEED) expect(new Set(i.vibes).size, i.title).toBe(i.vibes.length);
   });
 
-  it("tem as seis mídias e produções brasileiras", () => {
-    for (const m of ["anime", "manga", "jogo", "filme", "livro", "musica"] as const) {
+  it("tem as cinco mídias e produções brasileiras (música saiu do app)", () => {
+    expect(SEED.some((i) => i.media === "musica")).toBe(false);
+    for (const m of ["anime", "manga", "jogo", "filme", "livro"] as const) {
       expect(SEED.filter((i) => i.media === m).length).toBeGreaterThanOrEqual(12);
     }
     // o plano pede 30% no catálogo; aqui contamos jogos e filmes, onde há produção nacional

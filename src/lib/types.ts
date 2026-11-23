@@ -1,6 +1,12 @@
 export type Media = "anime" | "manga" | "jogo" | "filme" | "livro" | "musica";
 /** Ordem de exibição de todas as mídias. */
-export const MEDIAS: Media[] = ["anime", "manga", "jogo", "filme", "livro", "musica"];
+/**
+ * Mídias ativas no app. "musica" continua no tipo para não perder registros antigos, mas saiu do app:
+ * fica fora das telas, da busca e das sugestões (ver getItem).
+ */
+export const MEDIAS: Media[] = ["anime", "manga", "jogo", "filme", "livro"];
+const ACTIVE = new Set<Media>(MEDIAS);
+export const isActiveMedia = (m: Media) => ACTIVE.has(m);
 
 /** Cria um objeto com um valor inicial para cada mídia. */
 export function perMedia<T>(init: (m: Media) => T): Record<Media, T> {

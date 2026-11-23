@@ -23,9 +23,9 @@ def mklib(rating, review=None):
     if review: e["review"] = review
     return {"items": {}, "dismissed": [], "goal": 80, "lists": {}, "entries": {HADES: e}, "ts": {f"e:{HADES}": 5000}}
 def seed(pg, d):
-    pg.evaluate("d => localStorage.setItem('hobby:v1', JSON.stringify(d))", d); pg.reload(); pg.wait_for_selector("section.hero")
+    pg.evaluate("d => localStorage.setItem('hobby:v1', JSON.stringify(d))", d); pg.reload(); pg.wait_for_selector("h1")
 def signup(pg, email):
-    pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero")
+    pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1")
     c = pg.get_by_test_id("conta"); c.get_by_role("tab", name="Criar conta").click()
     pg.fill("#conta-email", email); pg.fill("#conta-senha", "senhaboa1"); c.locator("button[type=submit]").click()
     pg.wait_for_function("document.querySelector('[data-testid=sync-status]')?.textContent.startsWith('Sincronizado')", timeout=8000)
@@ -50,7 +50,7 @@ with sync_playwright() as p:
         pg.on("pageerror", lambda e: errs.append(str(e))); return pg
     ana, bru, car = newpage(), newpage(), newpage()
     for pg, email, lib in [(ana, "ana@ex.com", mklib(5, "Obra-prima, a trilha é incrível.")), (bru, "bruno@ex.com", mklib(4)), (car, "carla@ex.com", mklib(3))]:
-        pg.goto(BASE + "/perfil"); pg.wait_for_selector("section.hero"); seed(pg, lib); signup(pg, email)
+        pg.goto(BASE + "/ajustes"); pg.wait_for_selector("h1"); seed(pg, lib); signup(pg, email)
     publish(ana, "ana_dev", True); publish(bru, "bruno_x", False)
 
     # ---- Bruno segue a Ana e comenta no feed
@@ -69,7 +69,7 @@ with sync_playwright() as p:
     check("Bruno não responde ao próprio...mas pode: botão Responder existe", bru.get_by_test_id("responder").count() == 1)
     # Ana vê e responde
     ana.goto(BASE + "/comunidade"); ana.wait_for_selector("#pub-handle")
-    ana.goto(BASE + "/perfil"); ana.wait_for_selector("section.hero")
+    ana.goto(BASE + "/ajustes"); ana.wait_for_selector("h1")
     ana.goto(BASE + "/u/ana_dev"); ana.wait_for_selector("[data-testid=abrir-comentarios]", timeout=10000)
     ana.get_by_test_id("abrir-comentarios").first.click(); ana.wait_for_selector("[data-testid=comentario]")
     ana.get_by_test_id("responder").first.click()

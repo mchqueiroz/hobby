@@ -6,7 +6,7 @@ import { EMPTY_LIBRARY, type Library } from "../types";
 describe("busca local", () => {
   it("ignora acento e maiúsculas e põe quem começa com o termo primeiro", () => {
     const r = searchItems(EMPTY_LIBRARY, "DARK");
-    expect(r.map((i) => i.title)).toEqual(["Dark", "Dark Souls", "The Dark Side of the Moon"]);
+    expect(r.map((i) => i.title)).toEqual(["Dark", "Dark Souls"]);
     expect(searchItems(EMPTY_LIBRARY, "pássaro").length).toBe(0);
     expect(searchItems(EMPTY_LIBRARY, "auto da compadecida")[0].title).toBe("O Auto da Compadecida");
   });

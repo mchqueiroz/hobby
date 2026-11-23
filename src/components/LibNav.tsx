@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 const TABS = [
-  { href: "/biblioteca", label: "Itens" },
+  { href: "/perfil", label: "Biblioteca" },
   { href: "/diario", label: "Diário" },
   { href: "/lancamentos", label: "Lançamentos" },
   { href: "/listas", label: "Listas" },
@@ -20,7 +20,7 @@ export function LibNav({ current }: { current: string }) {
     if (el && nav.current) nav.current.scrollLeft = el.offsetLeft - (nav.current.clientWidth - el.offsetWidth) / 2;
   }, [current]);
   return (
-    <nav className="subnav" aria-label="Biblioteca" ref={nav}>
+    <nav className="subnav" aria-label="Seções do perfil" ref={nav}>
       {TABS.map((t) => (
         <Link key={t.href} href={t.href} aria-current={t.href === current ? "page" : undefined}>{t.label}</Link>
       ))}

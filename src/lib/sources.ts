@@ -524,7 +524,7 @@ export async function searchAll(q: string): Promise<RemoteResult> {
     settle("anilist", true, () => anilistSearch(q, "anime")),
     settle("anilist-manga", true, () => anilistSearch(q, "manga")),
     settle("openlibrary", true, () => openLibrarySearch(q)),
-    settle("musicbrainz", true, () => musicOr(() => musicBrainzSearch(q), () => deezerSearch(q))),
+    settle("musicbrainz", false, () => musicOr(() => musicBrainzSearch(q), () => deezerSearch(q))), // música saiu do app
     settle("steam", !c.igdb, () => steamSearch(q)),
   ]);
   return merge(t, g, a, m, o, u, st);
@@ -538,7 +538,7 @@ export async function discoverAll(vibes: string[], page = 1): Promise<RemoteResu
     settle("anilist", true, () => anilistDiscover(vibes, "anime", page)),
     settle("anilist-manga", true, () => anilistDiscover(vibes, "manga", page)),
     settle("openlibrary", true, () => openLibraryDiscover(vibes, page)),
-    settle("musicbrainz", true, () => musicOr(() => musicBrainzDiscover(vibes, page), () => deezerDiscover(vibes, page))),
+    settle("musicbrainz", false, () => musicOr(() => musicBrainzDiscover(vibes, page), () => deezerDiscover(vibes, page))), // música saiu do app
     settle("steam", !c.igdb, () => steamDiscover(vibes, page)),
   ]);
   return merge(t, g, a, m, o, u, st);

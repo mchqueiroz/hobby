@@ -37,12 +37,12 @@ describe("computeStats", () => {
   it("conta por status e mídia", () => {
     expect(s.total).toBe(6);
     expect(s.byStatus).toMatchObject({ concluido: 5, quero: 1 });
-    expect(s.byMedia).toEqual({ anime: 3, manga: 0, jogo: 1, filme: 2, livro: 0, musica: 0 });
+    expect(s.byMedia).toEqual({ anime: 3, manga: 0, jogo: 1, filme: 2, livro: 0 });
   });
   it("média geral e por mídia só com itens avaliados", () => {
     expect(s.rated).toBe(3);
     expect(s.average).toBe(4.17);
-    expect(s.averageByMedia).toEqual({ anime: 4.75, manga: null, jogo: 3, filme: null, livro: null, musica: null });
+    expect(s.averageByMedia).toEqual({ anime: 4.75, manga: null, jogo: 3, filme: null, livro: null });
   });
   it("histograma por meia estrela", () => {
     expect(s.histogram[9]).toBe(1); // 5★
