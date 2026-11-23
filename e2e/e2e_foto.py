@@ -168,6 +168,7 @@ with sync_playwright() as p:
     check("sem rolagem horizontal no celular", pg.evaluate("document.documentElement.scrollWidth <= innerWidth"))
 
     # excluir tudo apaga o perfil
+    pg.goto(BASE + "/perfil"); pg.wait_for_selector(".hero")
     pg.get_by_role("button", name="Alterar foto de perfil").click(); dlg.wait_for()
     pg.locator('[data-testid="file-avatar"]').set_input_files(wide); pg.wait_for_selector("canvas.crop-avatar")
     dlg.get_by_role("button", name="Salvar").click(); pg.wait_for_selector("[role=dialog]", state="detached")

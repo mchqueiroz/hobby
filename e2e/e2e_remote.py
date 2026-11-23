@@ -88,7 +88,7 @@ with sync_playwright() as p:
     # excluir dados esquece o participante
     n_before = len(events())
     pg.keyboard.press("Escape")
-    pg.goto(BASE + "/perfil")
+    pg.goto(BASE + "/ajustes")
     pg.click("text=Excluir meus dados"); pg.click("text=Confirmar exclusão"); pg.wait_for_timeout(300)
     check("excluir dados remove código e consentimento", pg.evaluate("[localStorage.getItem('hobby:pid'), localStorage.getItem('hobby:consent')]") == [None, None])
     check("sem erros de página", not errs, str(errs))
@@ -109,6 +109,8 @@ with sync_playwright() as p:
     pg = ctx.new_page()
     pg.goto(BASE + "/importar"); pg.click("text=Ver com dados de exemplo"); pg.wait_for_url("**/descobrir")
     pg.goto(BASE + "/biblioteca"); pg.wait_for_selector(".cover")
+    # a biblioteca fica abaixo do cartão e da vitrine no perfil, e as capas carregam ao aparecer
+    pg.locator("ul.cols2 li", has_text="Blade Runner").scroll_into_view_if_needed()
     pg.wait_for_function("(localStorage.getItem('hobby:covers')||'').includes('blade-runner') && [...document.querySelectorAll('.cover img')].filter(i => i.naturalWidth > 0).length >= 2", timeout=10000)
     check("capas de pôster aparecem na biblioteca", any("image.tmdb.org/t/p/w342/br.jpg" in u for u in asked), str(asked))
     check("capa de jogo vem do IGDB", any("images.igdb.com/igdb/image/upload/t_cover_big/hadescover.jpg" in u for u in asked), str(asked))

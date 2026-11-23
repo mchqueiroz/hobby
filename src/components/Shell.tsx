@@ -84,7 +84,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </>
       )}
       {storageProblem && (
-        <div role="alert" data-testid="aviso-armazenamento" className="card" style={{ position: "fixed", left: 12, right: 12, top: 12, zIndex: 60, borderColor: "var(--danger)" }}>
+        <div role="alert" data-testid="aviso-armazenamento" className="card" style={{ position: "fixed", left: 12, right: 12, top: "calc(env(safe-area-inset-top) + 62px)", zIndex: 60, borderColor: "var(--danger)" }}>
           <strong style={{ fontSize: 14 }}>Não consegui salvar neste aparelho</strong>
           <p style={{ fontSize: 13, marginTop: 4 }}>O armazenamento do navegador está cheio ou bloqueado. O que você registrar agora pode se perder ao fechar o app. Libere espaço, ou <Link href="/perfil" style={{ textDecoration: "underline" }}>exporte seus dados no Perfil</Link>.</p>
         </div>

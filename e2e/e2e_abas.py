@@ -8,7 +8,7 @@ def check(name, cond, extra=""):
     print(("PASS " if cond else "FAIL ") + name + (f"  [{extra}]" if extra and not cond else ""))
 
 def registrar(pg, busca, nota):
-    pg.click('button[aria-label="Registrar um item"]'); pg.fill("#busca", busca)
+    pg.get_by_role("button", name="Registrar um item").click(); pg.fill("#busca", busca)
     pg.click('[role=dialog] button.result'); pg.click(f'[role=dialog] button[aria-label="Nota {nota}"]'); pg.wait_for_selector(".toast")
 ents = lambda pg: json.loads(pg.evaluate("localStorage.getItem('hobby:v1')") or '{"entries":{}}')["entries"]
 
