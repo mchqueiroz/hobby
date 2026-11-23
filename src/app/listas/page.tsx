@@ -39,7 +39,7 @@ export default function Listas() {
           return (
             <li key={l.id} className="card" style={{ marginBottom: 12 }}>
               <Link href={`/listas/${l.id}`} style={{ display: "block" }}>
-                <strong style={{ fontFamily: "Lora, serif", fontSize: 18 }}>{l.name}</strong>
+                <strong style={{ fontFamily: "var(--display)", fontSize: 18 }}>{l.name}</strong>
                 <span className="muted" style={{ fontSize: 13, display: "block", marginTop: 2 }}>
                   {l.itemIds.length === 1 ? "1 item" : `${l.itemIds.length} itens`}
                 </span>

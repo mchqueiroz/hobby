@@ -92,7 +92,8 @@ describe("banner automático", () => {
   it("duas cores no mesmo formato que o canvas entende", () => {
     const [a, b] = bannerColors({ h: 200.4, s: 0.5, l: 0.4 });
     expect(a).toMatch(/^hsl\(\d+, \d+%, \d+%\)$/);
-    expect(b).toBe("hsl(242, 62%, 52%)");
-    expect(bannerColors({ h: 350, s: 1, l: 1 })[1]).toBe("hsl(32, 62%, 52%)");
+    // dois tons da mesma cor, sem salto de matiz
+    expect([a, b]).toEqual(["hsl(200, 30%, 20%)", "hsl(200, 34%, 36%)"]);
+    expect(bannerColors({ h: 350, s: 1, l: 1 })[1]).toBe("hsl(350, 34%, 36%)");
   });
 });

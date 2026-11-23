@@ -51,7 +51,7 @@ with sync_playwright() as p:
     pg.fill("form input", "Fim de semana"); pg.keyboard.press("Enter"); pg.wait_for_timeout(300)
     lid=pg.evaluate("Object.keys(JSON.parse(localStorage.getItem('hobby:v1')).lists)[0]")
     for id_ in ["seed:jogo:hades", "seed:livro:o-hobbit"]:
-        obra(pg, id_); pg.get_by_role("button", name="+ Fim de semana").click(); pg.wait_for_timeout(200)
+        obra(pg, id_); pg.get_by_role("button", name="Fim de semana").click(); pg.wait_for_timeout(200)
     pg.goto(B+"/listas/"+lid); pg.wait_for_selector("[data-testid=compartilhar-lista]")
     pg.evaluate("Object.defineProperty(navigator, 'share', { value: undefined, configurable: true })")
     pg.context.grant_permissions(["clipboard-read", "clipboard-write"])

@@ -185,7 +185,7 @@ export default function Importar() {
       {st.s === "done" && (
         <section className="card mt16" aria-live="polite">
           <p className="label" style={{ margin: 0 }}>Importação concluída</p>
-          <p style={{ fontFamily: "Lora, serif", fontSize: 40, fontWeight: 700, letterSpacing: -1 }}>
+          <p style={{ fontFamily: "var(--display)", fontSize: 40, fontWeight: 700, letterSpacing: -1 }}>
             {total} <span style={{ fontSize: 18, fontWeight: 500 }}>{st.unit}</span>
           </p>
           <div className="bar mt8"><i style={{ width: "100%", background: "var(--jogo)" }} /></div>

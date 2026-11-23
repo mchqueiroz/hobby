@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowRight, CaretLeft, Check, Plus, PushPinSimple, Queue } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo } from "react";
@@ -43,7 +44,7 @@ export default function ItemPage() {
 
   return (
     <ObraTheme item={item}>
-      <div className="row between"><Link href="/biblioteca" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>‹ Voltar</Link><span className="word" style={{ fontSize: 18 }}>hobby</span></div>
+      <div className="row between"><Link href="/biblioteca" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Voltar</Link><span className="word" style={{ fontSize: 18 }}>hobby</span></div>
 
       <div className="row mt16" style={{ alignItems: "flex-end", gap: 16 }}>
         <Cover item={item} w={130} h={184} fs={16} />
@@ -66,12 +67,12 @@ export default function ItemPage() {
           <div className="row gap8 mt12" style={{ flexWrap: "wrap" }}>
             <button type="button" className="chip" aria-pressed={!!entry.pin} data-testid="vitrine"
               onClick={() => toast(togglePin(id) ? (entry.pin ? "Tirado da vitrine" : "Fixado na vitrine do perfil") : `A vitrine já tem ${MAX_PINS} obras. Tire uma no Perfil.`)}>
-              {entry.pin ? "★ Na vitrine" : "☆ Fixar na vitrine"}
+              {entry.pin ? <><PushPinSimple size={16} weight="fill" aria-hidden="true" />Na vitrine</> : <><PushPinSimple size={16} aria-hidden="true" />Fixar na vitrine</>}
             </button>
             {entry.status === "quero" && (
               <button type="button" className="chip" aria-pressed={!!entry.queue} data-testid="fila"
                 onClick={() => toast(toggleQueue(id) ? (entry.queue ? "Tirado da fila" : "Na fila: aparece em Início, em A seguir") : `A fila já tem ${MAX_QUEUE} obras.`)}>
-                {entry.queue ? "✓ Na fila A seguir" : "+ A seguir"}
+                {entry.queue ? <><Check size={16} weight="bold" aria-hidden="true" />Na fila</> : <><Queue size={16} aria-hidden="true" />A seguir</>}
               </button>
             )}
           </div>
@@ -98,7 +99,7 @@ export default function ItemPage() {
                   <Cover item={rec.anchor.item} w={64} h={90} fs={11} />
                   <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>sua biblioteca</div>
                 </div>
-                <span aria-hidden="true" style={{ fontSize: 26 }} className="muted">→</span>
+                <ArrowRight size={22} className="muted" aria-hidden="true" />
                 <div style={{ textAlign: "center" }}>
                   <Cover item={item} w={64} h={90} fs={11} />
                   <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>sugestão</div>
@@ -144,7 +145,7 @@ export default function ItemPage() {
             return (
               <button key={l.id} type="button" className="chip" aria-pressed={on}
                 onClick={() => toast(toggleInList(l.id, item) ? `Adicionado a ${l.name}` : `Tirado de ${l.name}`)}>
-                {on ? "✓ " : "+ "}{l.name}
+                {on ? <Check size={14} weight="bold" aria-hidden="true" /> : <Plus size={14} weight="bold" aria-hidden="true" />}{l.name}
               </button>
             );
           })}

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { badges, bridgeVibes, dna, favorites, persona, showcase, weeklyStreak, memberSince } from "@/lib/insights";
@@ -165,7 +166,7 @@ export function Badges({ lib }: { lib: Library }) {
       <ul className="badges" style={{ listStyle: "none" }}>
         {list.map((b) => (
           <li key={b.id} className={b.earned ? "badge on" : "badge"}>
-            <span className="badge-mark" aria-hidden="true">{b.earned ? "✓" : `${b.value}/${b.target}`}</span>
+            <span className="badge-mark" aria-hidden="true">{b.earned ? <Check size={20} weight="bold" /> : `${b.value}/${b.target}`}</span>
             <span>
               <strong style={{ fontSize: 14, display: "block" }}>{b.label}{b.earned && <span className="sr"> (conquistada)</span>}</strong>
               <span className="muted" style={{ fontSize: 12.5 }}>{b.desc}</span>

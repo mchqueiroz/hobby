@@ -28,14 +28,14 @@ export default function Debug() {
   const medTaps = median(taps);
 
   const rows: [string, string, string][] = [
-    ["Registros feitos", String(saves.length), "—"],
-    ["Mediana de tempo para registrar", medMs === null ? "—" : `${(medMs / 1000).toFixed(1).replace(".", ",")} s`, "meta: até 5 s"],
-    ["Mediana de toques para registrar", medTaps === null ? "—" : String(medTaps), "meta: até 2"],
-    ["Importações concluídas", String(count("import_done")), "—"],
-    ["Importações com erro", String(count("import_fail")), "—"],
-    ["Sugestões aceitas (Quero ver)", String(accepted), "—"],
-    ["…sendo de outra mídia", String(crossAccepted), "—"],
-    ["Sugestões dispensadas", String(dismissed), "—"],
+    ["Registros feitos", String(saves.length), "-"],
+    ["Mediana de tempo para registrar", medMs === null ? "-" : `${(medMs / 1000).toFixed(1).replace(".", ",")} s`, "meta: até 5 s"],
+    ["Mediana de toques para registrar", medTaps === null ? "-" : String(medTaps), "meta: até 2"],
+    ["Importações concluídas", String(count("import_done")), "-"],
+    ["Importações com erro", String(count("import_fail")), "-"],
+    ["Sugestões aceitas (Quero ver)", String(accepted), "-"],
+    ["…sendo de outra mídia", String(crossAccepted), "-"],
+    ["Sugestões dispensadas", String(dismissed), "-"],
   ];
 
   function download() {

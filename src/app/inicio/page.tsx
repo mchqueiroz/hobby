@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUp, X } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { fmtRating, getItem, recommend } from "@/lib/recommend";
@@ -24,7 +25,7 @@ function Ring({ pct }: { pct: number }) {
       <circle cx="40" cy="40" r={r} fill="none" stroke="var(--line)" strokeWidth="8" />
       <circle cx="40" cy="40" r={r} fill="none" stroke="var(--ink)" strokeWidth="8" strokeLinecap="round"
         strokeDasharray={`${(Math.min(100, pct) / 100) * c} ${c}`} transform="rotate(-90 40 40)" style={{ transition: "stroke-dasharray .5s ease" }} />
-      <text x="40" y="46" textAnchor="middle" style={{ font: "700 18px Lora, serif", fill: "var(--ink)" }}>{Math.min(100, pct)}%</text>
+      <text x="40" y="46" textAnchor="middle" style={{ font: "800 18px 'Schibsted Grotesk Variable', sans-serif", fill: "var(--ink)" }}>{Math.min(100, pct)}%</text>
     </svg>
   );
 }
@@ -135,10 +136,10 @@ export default function Inicio() {
                 <Link href={`/item/${encodeURIComponent(item.id)}`} style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>
                   {item.title} <span className="muted" style={{ fontWeight: 400, fontSize: 12 }}>· {MEDIA_LABEL[item.media]}</span>
                 </Link>
-                {i > 0 && <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} aria-label={`Subir ${item.title} na fila`} onClick={() => queueUp(item.id)}>↑</button>}
+                {i > 0 && <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} aria-label={`Subir ${item.title} na fila`} onClick={() => queueUp(item.id)}><ArrowUp size={16} weight="bold" aria-hidden="true" /></button>}
                 <button type="button" className="btn ghost small" style={{ width: "auto" }} aria-label={`Começar ${item.title}`}
                   onClick={() => { saveEntry(item, "andamento"); toast(`${item.title}: Em andamento`, undoLast); }}>Começar</button>
-                <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} aria-label={`Tirar ${item.title} da fila`} onClick={() => toggleQueue(item.id)}>✕</button>
+                <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} aria-label={`Tirar ${item.title} da fila`} onClick={() => toggleQueue(item.id)}><X size={16} weight="bold" aria-hidden="true" /></button>
               </li>
             ))}
           </ol>

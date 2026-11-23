@@ -1,5 +1,6 @@
 "use client";
 
+import { Check } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useState } from "react";
 import { getItem } from "@/lib/recommend";
@@ -125,9 +126,9 @@ export default function Perfil() {
       <p className="label">Desafios</p>
       <ul className="stack gap8" style={{ listStyle: "none", padding: 0 }} data-testid="conquistas">
         {achievements(lib, (id) => getItem(lib, id)?.media).map((a) => (
-          <li key={a.id} className="card" style={{ padding: 12, opacity: a.done ? 1 : 0.85 }} data-done={a.done}>
+          <li key={a.id} className="card" style={{ padding: 12 }} data-done={a.done}>
             <div className="row between" style={{ alignItems: "center" }}>
-              <strong style={{ fontSize: 14 }}>{a.done ? "✓ " : ""}{a.title}</strong>
+              <strong style={{ fontSize: 14 }}>{a.done && <Check size={14} weight="bold" aria-label="feito" style={{ marginRight: 4, verticalAlign: -2 }} />}{a.title}</strong>
               <span className="muted" style={{ fontSize: 12 }}>{a.value}/{a.goal}</span>
             </div>
             <p className="muted" style={{ fontSize: 12.5, margin: "2px 0 8px" }}>{a.desc}</p>

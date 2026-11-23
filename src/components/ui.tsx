@@ -1,5 +1,6 @@
 "use client";
 
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type CSSProperties } from "react";
@@ -88,7 +89,7 @@ export function Header({ title, sub }: { title: string; sub?: string }) {
       <div className="word">hobby</div>
       {path !== "/buscar" && (
         <Link href="/buscar" className="hsearch" aria-label="Buscar">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <MagnifyingGlass size={21} weight="bold" aria-hidden="true" />
         </Link>
       )}
       <h1 style={{ marginTop: 14 }}>{title}</h1>

@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowUpRight } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import type { Availability, Details } from "@/lib/details";
 import { searchLinks } from "@/lib/availability";
@@ -68,7 +69,7 @@ export function ObraDetails({ item }: { item: Item }) {
       <Where item={item} where={d.where} providers={d.providers} />
       {d.trailer && (
         <a className="btn ghost small mt12" style={{ width: "auto", display: "inline-flex" }} href={d.trailer} target="_blank" rel="noopener noreferrer">
-          Ver trailer no YouTube ↗
+          Ver trailer no YouTube <ArrowUpRight size={15} weight="bold" aria-hidden="true" />
         </a>
       )}
     </section>
@@ -107,7 +108,7 @@ function Where({ item, where, providers }: { item: Item; where?: Availability; p
       {flat.length > 0 && <p className="chips mt8">{flat.map((p) => <span key={p} className="vibe">{p}</span>)}</p>}
       {where && where.links.length > 0 && (
         <p className="row gap8 mt8" style={{ flexWrap: "wrap" }} data-testid="onde-links">
-          {where.links.map((l) => <a key={l.name} className="btn ghost small" style={{ width: "auto" }} href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>)}
+          {where.links.map((l) => <a key={l.name} className="btn ghost small" style={{ width: "auto" }} href={l.url} target="_blank" rel="noopener noreferrer">{l.name} <ArrowUpRight size={14} weight="bold" aria-hidden="true" /></a>)}
         </p>
       )}
       {known && where && (
@@ -120,7 +121,7 @@ function Where({ item, where, providers }: { item: Item; where?: Availability; p
       {searches.length > 0 && (
         <p className="row gap8 mt8" style={{ flexWrap: "wrap", alignItems: "center" }} data-testid="onde-busca">
           {known && <span className="muted" style={{ fontSize: 12 }}>Procurar em:</span>}
-          {searches.map((l) => <a key={l.name} className="chip" href={l.url} target="_blank" rel="noopener noreferrer">{l.name} ↗</a>)}
+          {searches.map((l) => <a key={l.name} className="chip" href={l.url} target="_blank" rel="noopener noreferrer">{l.name} <ArrowUpRight size={14} weight="bold" aria-hidden="true" /></a>)}
         </p>
       )}
     </section>

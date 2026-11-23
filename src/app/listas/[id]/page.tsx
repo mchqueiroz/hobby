@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowDown, ArrowUp, CaretLeft } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -33,7 +34,7 @@ export default function ListaPage() {
 
   return (
     <>
-      <div className="row between"><Link href="/listas" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>‹ Listas</Link><span className="word" style={{ fontSize: 18 }}>hobby</span></div>
+      <div className="row between"><Link href="/listas" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Listas</Link><span className="word" style={{ fontSize: 18 }}>hobby</span></div>
 
       {editing ? (
         <form className="row gap8 mt16" onSubmit={(e) => { e.preventDefault(); renameList(id, name); setEditing(false); }}>
@@ -64,8 +65,8 @@ export default function ListaPage() {
               </span>
             </Link>
             <span className="row" style={{ gap: 2 }}>
-              <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} disabled={idx === 0} onClick={() => moveInList(id, item.id, -1)} aria-label={`Subir ${item.title} para a posição ${idx}`}>↑</button>
-              <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} disabled={idx === items.length - 1} onClick={() => moveInList(id, item.id, 1)} aria-label={`Descer ${item.title} para a posição ${idx + 2}`}>↓</button>
+              <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} disabled={idx === 0} onClick={() => moveInList(id, item.id, -1)} aria-label={`Subir ${item.title} para a posição ${idx}`}><ArrowUp size={16} weight="bold" aria-hidden="true" /></button>
+              <button type="button" className="btn ghost small" style={{ width: 40, padding: 0 }} disabled={idx === items.length - 1} onClick={() => moveInList(id, item.id, 1)} aria-label={`Descer ${item.title} para a posição ${idx + 2}`}><ArrowDown size={16} weight="bold" aria-hidden="true" /></button>
             </span>
             <button type="button" className="btn ghost small" style={{ width: "auto" }} onClick={() => toggleInList(id, item)} aria-label={`Tirar ${item.title} da lista`}>Tirar</button>
           </li>

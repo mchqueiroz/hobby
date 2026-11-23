@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/lora/400.css";
-import "@fontsource/lora/700.css";
-import "@fontsource/lora/700-italic.css";
-import "@fontsource-variable/inter";
+import "@fontsource-variable/schibsted-grotesk/wght.css";
+import "@fontsource-variable/schibsted-grotesk/wght-italic.css";
 import "./globals.css";
 import { THEME_BOOT } from "@/lib/theme";
 import { Shell } from "@/components/Shell";
@@ -22,8 +20,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4efe6" },
-    { media: "(prefers-color-scheme: dark)", color: "#15140f" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f4f1" },
+    { media: "(prefers-color-scheme: dark)", color: "#111110" },
   ],
 };
 

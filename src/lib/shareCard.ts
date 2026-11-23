@@ -20,7 +20,7 @@ export interface ShareData {
 
 const W = 1080;
 const H = 1350;
-const COLORS = { paper: "#f4efe6", ink: "#17150f", mute: "#5f5a50", line: "#d8d0c0", };
+const COLORS = { paper: "#f4f4f1", ink: "#141413", mute: "#5f5f5a", line: "#e0e0db", };
 const MEDIA_COLOR: Record<Media, string> = { anime: "#c93d22", manga: "#7a3b9c", jogo: "#2f7d5b", filme: "#2b5c9e", livro: "#9a5a12", musica: "#b02a67" };
 
 function loadDataImage(src: string): Promise<HTMLImageElement | null> {
@@ -48,7 +48,7 @@ function stars(r?: number) {
 /** Desenha o cartão do perfil em um PNG. Só usa o que a pessoa vê na tela; nada é enviado a servidor. */
 export async function buildShareCard(d: ShareData): Promise<Blob> {
   try {
-    await Promise.all([document.fonts.load("700 80px Lora"), document.fonts.load("italic 700 56px Lora"), document.fonts.load("500 30px Inter Variable")]);
+    await Promise.all([document.fonts.load('800 80px "Schibsted Grotesk Variable"'), document.fonts.load('italic 800 56px "Schibsted Grotesk Variable"'), document.fonts.load('500 30px "Schibsted Grotesk Variable"')]);
   } catch {
     /* sem fontes carregadas, o navegador usa a reserva */
   }
@@ -57,8 +57,8 @@ export async function buildShareCard(d: ShareData): Promise<Blob> {
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas");
-  const serif = "Lora, Georgia, serif";
-  const sans = '"Inter Variable", Inter, system-ui, sans-serif';
+  const serif = '"Schibsted Grotesk Variable", system-ui, sans-serif'; // títulos (o nome ficou de quando era serifada)
+  const sans = '"Schibsted Grotesk Variable", system-ui, sans-serif';
 
   ctx.fillStyle = COLORS.paper;
   ctx.fillRect(0, 0, W, H);
@@ -89,7 +89,7 @@ export async function buildShareCard(d: ShareData): Promise<Blob> {
     ctx.fillRect(i * seg, BH - 16, seg, 16);
   });
   ctx.fillStyle = "#fff";
-  ctx.font = `italic 700 56px ${serif}`;
+  ctx.font = `italic 800 56px ${serif}`;
   ctx.fillText("hobby", 80, 100);
 
   // avatar sobre a borda do banner
@@ -113,7 +113,7 @@ export async function buildShareCard(d: ShareData): Promise<Blob> {
     ctx.fillRect(ax - AR, ay - AR, AR * 2, AR * 2);
     ctx.restore();
     ctx.fillStyle = "#fff";
-    ctx.font = `700 72px ${serif}`;
+    ctx.font = `800 72px ${serif}`;
     ctx.textAlign = "center";
     ctx.fillText(d.initials, ax, ay + 25);
     ctx.textAlign = "left";
@@ -121,7 +121,7 @@ export async function buildShareCard(d: ShareData): Promise<Blob> {
 
   const nx = 80 + AR * 2 + 36;
   ctx.fillStyle = COLORS.ink;
-  ctx.font = `700 80px ${serif}`;
+  ctx.font = `800 80px ${serif}`;
   ctx.fillText(fit(ctx, d.name || "Meu perfil", W - nx - 80), nx, 330);
   ctx.fillStyle = COLORS.mute;
   ctx.font = `500 36px ${sans}`;
@@ -134,7 +134,7 @@ export async function buildShareCard(d: ShareData): Promise<Blob> {
   cols.forEach(([m, color], i) => {
     const x = 80 + i * 310;
     ctx.fillStyle = color;
-    ctx.font = `700 110px ${serif}`;
+    ctx.font = `800 110px ${serif}`;
     ctx.fillText(String(d.counts[m]), x, 520);
     ctx.fillStyle = COLORS.ink;
     ctx.font = `500 30px ${sans}`;
@@ -177,7 +177,7 @@ export async function buildShareCard(d: ShareData): Promise<Blob> {
     ctx.fillStyle = MEDIA_COLOR[f.media];
     ctx.fillRect(80, ry - 36, 10, 50);
     ctx.fillStyle = COLORS.ink;
-    ctx.font = `700 38px ${serif}`;
+    ctx.font = `800 38px ${serif}`;
     ctx.fillText(fit(ctx, f.title, 640), 110, ry);
     ctx.fillStyle = COLORS.mute;
     ctx.font = `500 26px ${sans}`;

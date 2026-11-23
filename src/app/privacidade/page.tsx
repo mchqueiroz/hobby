@@ -1,3 +1,4 @@
+import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -9,7 +10,7 @@ const CONTACT = process.env.NEXT_PUBLIC_CONTACT_URL || process.env.CONTACT_URL |
 export default function Privacidade() {
   return (
     <>
-      <Link href="/" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>‹ Início</Link>
+      <Link href="/" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Início</Link>
       <h1 style={{ marginTop: 8 }}>Privacidade</h1>
       <p className="sub">Última atualização: novembro de 2026. Texto em linguagem simples, escrito para este app.</p>
 
@@ -32,7 +33,7 @@ export default function Privacidade() {
       <p>Não vendemos dados, não mostramos anúncios e não usamos rastreadores de terceiros.</p>
 
       <h2 className="label">Seus direitos (LGPD)</h2>
-      <p>Você pode levar tudo (Perfil → Exportar meus dados, em JSON, ou planilha CSV) e apagar tudo (Perfil → Excluir meus dados), inclusive a conta e a cópia na nuvem. Para dúvidas ou pedidos sobre seus dados{CONTACT ? <>, fale com a gente em <strong>{CONTACT}</strong></> : ", use o contato informado no site onde o app foi publicado"}.</p>
+      <p>Você pode levar tudo (em Perfil, Exportar meus dados, em JSON ou planilha CSV) e apagar tudo (em Perfil, Excluir meus dados), inclusive a conta e a cópia na nuvem. Para dúvidas ou pedidos sobre seus dados{CONTACT ? <>, fale com a gente em <strong>{CONTACT}</strong></> : ", use o contato informado no site onde o app foi publicado"}.</p>
 
       <h2 className="label">Menores de 18 anos</h2>
       <p>Menores de 18 anos devem usar o Hobby com o consentimento de um responsável.</p>

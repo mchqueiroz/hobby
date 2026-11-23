@@ -125,7 +125,7 @@ export function RegisterSheet({ initial, onClose }: { initial?: Item; onClose: (
             <div className="row mt16" style={{ gap: 12 }}>
               <Cover item={item} w={56} h={78} fs={11} />
               <div>
-                <strong style={{ fontFamily: "Lora, serif", fontSize: 19 }}>{item.title}</strong>
+                <strong style={{ fontFamily: "var(--display)", fontSize: 19 }}>{item.title}</strong>
                 <div className="mt8"><MediaTag media={item.media} /></div>
               </div>
             </div>
@@ -136,7 +136,7 @@ export function RegisterSheet({ initial, onClose }: { initial?: Item; onClose: (
                 <label className="label" htmlFor="resenha-registro">Sua resenha (opcional)</label>
                 <textarea id="resenha-registro" className="field" rows={3} maxLength={MAX_REVIEW} value={review} onChange={(e) => setReview(e.target.value)}
                   placeholder="O que você achou? Escreva aqui e depois toque na nota para salvar tudo junto." />
-                <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>{review.length}/{MAX_REVIEW}. Só aparece para outras pessoas se você publicar seu perfil e liberar resenhas em Comunidade.</p>
+                <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>{review.length}/{MAX_REVIEW}. Fica só com você até publicar o perfil em Comunidade.</p>
               </>
             ) : (
               <button type="button" className="chip mt12" onClick={() => setWriting(true)}>+ Escrever resenha</button>

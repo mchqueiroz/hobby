@@ -49,7 +49,7 @@ export default function Estatisticas() {
         <>
           <div className="grid3 mt16">
             <div className="card stat"><b>{s.total}</b><span>itens</span></div>
-            <div className="card stat"><b>{s.average !== null ? fmtRating(s.average) : "–"}</b><span>nota média</span></div>
+            <div className="card stat"><b>{s.average !== null ? fmtRating(s.average) : "-"}</b><span>nota média</span></div>
             <div className="card stat"><b>{s.reviews}</b><span>{s.reviews === 1 ? "resenha" : "resenhas"}</span></div>
           </div>
 
@@ -69,7 +69,7 @@ export default function Estatisticas() {
             <>
               <p className="label">Tempo dedicado</p>
               <div className="card" data-testid="tempo">
-                <p style={{ fontFamily: "Lora, serif", fontSize: 30, fontWeight: 700 }}>
+                <p style={{ fontFamily: "var(--display)", fontSize: 30, fontWeight: 700 }}>
                   ≈ {time.total.toLocaleString("pt-BR")} h <span className="muted" style={{ fontSize: 15, fontWeight: 500 }}>({(time.total / 24).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} dias)</span>
                 </p>
                 {medias.filter((m) => time.byMedia[m] > 0).map((m) => (

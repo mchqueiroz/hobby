@@ -21,7 +21,7 @@ const STATUSES: { value: StatusFilter; label: string }[] = [
 const SORTS: { value: Sort; label: string }[] = [
   { value: "recentes", label: "Mais recentes" },
   { value: "nota", label: "Maiores notas" },
-  { value: "titulo", label: "A–Z" },
+  { value: "titulo", label: "A-Z" },
   { value: "ano", label: "Ano" },
 ];
 const VIEWS: { value: "lista" | "grade"; label: string }[] = [
@@ -118,7 +118,7 @@ export default function Biblioteca() {
                 <strong style={{ fontSize: 15, display: "block" }}>{item.title}</strong>
                 <span className="row gap8" style={{ marginTop: 4 }}>
                   <MediaTag media={item.media} />
-                  <span className="muted" style={{ fontSize: 12 }}>{statusLabel(e.status, item.media)}{e.status === "andamento" && e.progress ? ` · ${progressText(item.media, e.progress)}${e.total ? ` de ${e.total}` : ""}` : ""}{(e.rounds ?? 1) > 1 ? ` · ${e.rounds}×` : ""}</span>
+                  <span className="muted" style={{ fontSize: 12 }}>{statusLabel(e.status, item.media)}{e.status === "andamento" && e.progress ? ` · ${progressText(item.media, e.progress)}${e.total ? ` de ${e.total}` : ""}` : ""}{(e.rounds ?? 1) > 1 ? ` · ${e.rounds} vezes` : ""}</span>
                   {e.status === "andamento" && e.total ? <span style={{ display: "block", marginTop: 4 }}><ProgressBar value={e.progress ?? 0} total={e.total} label={`${item.title}: ${e.progress ?? 0} de ${e.total}`} /></span> : null}
                 </span>
               </span>

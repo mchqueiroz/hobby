@@ -83,7 +83,7 @@ export default function Retrospectiva() {
 
           <section className="card mt16" aria-label={`Resumo de ${year}`} data-testid="resumo-ano">
             <p className="label" style={{ margin: 0 }}>{year}</p>
-            <p style={{ fontFamily: "Lora, serif", fontSize: 30, fontWeight: 700, marginTop: 6 }} data-testid="total-ano">
+            <p style={{ fontFamily: "var(--display)", fontSize: 30, fontWeight: 700, marginTop: 6 }} data-testid="total-ano">
               {r.done} {r.done === 1 ? "obra concluída" : "obras concluídas"}
             </p>
             {r.done > 0 && (

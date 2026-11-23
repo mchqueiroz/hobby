@@ -1,3 +1,4 @@
+import { CaretLeft } from "@phosphor-icons/react/dist/ssr";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -7,7 +8,7 @@ export const metadata: Metadata = { title: "Termos de uso", description: "Regras
 export default function Termos() {
   return (
     <>
-      <Link href="/" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center" }}>‹ Início</Link>
+      <Link href="/" style={{ fontWeight: 600, minHeight: 44, display: "inline-flex", alignItems: "center", gap: 4 }}><CaretLeft size={16} weight="bold" aria-hidden="true" />Início</Link>
       <h1 style={{ marginTop: 8 }}>Termos de uso</h1>
       <p className="sub">Última atualização: novembro de 2026.</p>
 

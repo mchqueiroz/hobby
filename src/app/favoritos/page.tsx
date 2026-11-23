@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, X } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { SEED, titleKey } from "@/lib/catalog";
@@ -94,7 +95,7 @@ export default function Favoritos() {
             {found.map((it) => (
               <button key={it.id} type="button" className="btn ghost small" style={{ width: "auto" }} aria-label={`Remover ${it.title}`}
                 onClick={() => setFound((f) => f.filter((x) => x.id !== it.id))}>
-                {it.title} · {MEDIA_LABEL[it.media]} ✕
+                {it.title} · {MEDIA_LABEL[it.media]} <X size={14} weight="bold" aria-hidden="true" />
               </button>
             ))}
           </div>
@@ -112,7 +113,7 @@ export default function Favoritos() {
               <div style={{ position: "relative" }}>
                 <Cover item={it} w={106} h={140} fs={12} />
                 {on && (
-                  <span aria-hidden="true" style={{ position: "absolute", top: 6, right: 6, background: "var(--ink)", color: "var(--paper)", width: 24, height: 24, borderRadius: "50%", textAlign: "center", lineHeight: "24px", fontSize: 14 }}>✓</span>
+                  <span aria-hidden="true" style={{ position: "absolute", top: 6, right: 6, background: "var(--ink)", color: "var(--paper)", width: 24, height: 24, borderRadius: "50%", display: "grid", placeItems: "center" }}><Check size={14} weight="bold" /></span>
                 )}
               </div>
             </button>

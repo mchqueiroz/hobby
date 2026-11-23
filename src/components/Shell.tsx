@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "@phosphor-icons/react";
 import { useCloud } from "@/lib/cloud";
 import { useNovidades } from "@/lib/novidades";
 import Link from "next/link";
@@ -70,7 +71,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <nav aria-label="Principal">
             <Link href="/inicio" aria-current={path.startsWith("/inicio") ? "page" : undefined}>Início</Link>
             <Link href="/biblioteca" aria-current={LIB_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}>Biblioteca</Link>
-            <button type="button" className="plus" aria-label="Registrar um item" onClick={() => openRegister()}>+</button>
+            <button type="button" className="plus" aria-label="Registrar um item" onClick={() => openRegister()}><Plus size={24} weight="bold" aria-hidden="true" /></button>
             <Link href="/descobrir" aria-current={path.startsWith("/descobrir") ? "page" : undefined}>Descobrir</Link>
             <Link href="/comunidade" aria-current={SOCIAL_PATHS.some((p) => path.startsWith(p)) ? "page" : undefined}>Social{novidades > 0 && <><span className="dot" aria-hidden="true" /><span className="sr"> ({novidades} {novidades === 1 ? "novidade" : "novidades"})</span></>}</Link>
             <Link href="/perfil" aria-current={path.startsWith("/perfil") ? "page" : undefined}>Perfil</Link>

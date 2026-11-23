@@ -15,7 +15,7 @@ with sync_playwright() as p:
     chk(n==5,f"mostra 5 sugestões ({n})")
     chk(all("Porque você" in t or "Combina com" in t for t in cards().locator("p").all_inner_texts() if t.startswith(("Porque","Combina"))),"todas explicam o motivo")
     chk(pg.get_by_test_id("aposta").count()==1,"uma e só uma aposta")
-    chk("Foge um pouco" in pg.locator("main").inner_text(),"a aposta diz por que é aposta")
+    chk("Uma aposta" in pg.locator("main").inner_text(),"a aposta diz por que é aposta")
     last=cards().nth(n-1)
     chk(last.get_by_test_id("aposta").count()==1,"a aposta é a última da lista")
     chk(any("page=1" in u for u in asked),"pediu a página 1 de candidatos")

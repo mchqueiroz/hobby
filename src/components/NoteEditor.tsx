@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { dateFromInput, dateToInput } from "@/lib/stats";
 import { MAX_REVIEW, redo, setNote, setTags, stepProgress, undoLast, useLibrary } from "@/lib/store";
@@ -51,7 +52,7 @@ export function NoteEditor({ itemId, entry, media }: { itemId: string; entry: En
               value={entry.total ?? ""} placeholder="total" aria-label={`Total (opcional): com ele a obra conclui sozinha ao chegar lá`}
               onChange={(e) => setNote(itemId, { total: e.target.value === "" ? null : Number(e.target.value) })} />
           </div>
-          {prog?.total ? <div className="mt8"><ProgressBar value={prog.value} total={prog.total} label={`Progresso: ${prog.value} de ${prog.total}`} /><p className="muted" style={{ fontSize: 12, marginTop: 4 }}>{prog.pct}% · ao chegar em {prog.total} a obra é concluída com a data de hoje</p></div> : null}
+          {prog?.total ? <div className="mt8"><ProgressBar value={prog.value} total={prog.total} label={`Progresso: ${prog.value} de ${prog.total}`} /><p className="muted" style={{ fontSize: 12, marginTop: 4 }}>{prog.pct}%. Em {prog.total}, a obra conclui sozinha.</p></div> : null}
         </div>
       )}
       {entry.status === "concluido" && (
@@ -71,7 +72,7 @@ export function NoteEditor({ itemId, entry, media }: { itemId: string; entry: En
       <label className="label" htmlFor="etiqueta">Etiquetas</label>
       <div className="row gap8" style={{ flexWrap: "wrap", marginBottom: 8 }} data-testid="etiquetas">
         {tags.map((t) => (
-          <button key={t} type="button" className="chip" aria-label={`Remover etiqueta ${t}`} onClick={() => setTags(itemId, tags.filter((x) => x !== t))}>{t} ×</button>
+          <button key={t} type="button" className="chip" aria-label={`Remover etiqueta ${t}`} onClick={() => setTags(itemId, tags.filter((x) => x !== t))}>{t} <X size={13} weight="bold" aria-hidden="true" /></button>
         ))}
       </div>
       {tags.length < MAX_TAGS && (
@@ -86,7 +87,7 @@ export function NoteEditor({ itemId, entry, media }: { itemId: string; entry: En
           {suggestions.map((t) => <button key={t} type="button" className="chip" onClick={() => addTag(t)}>+ {t}</button>)}
         </div>
       )}
-      <p className="muted" style={{ fontSize: 12, margin: "4px 0 12px" }}>Só você vê. Use para organizar do seu jeito e filtre na Biblioteca.</p>
+      <p className="muted" style={{ fontSize: 12, margin: "4px 0 12px" }}>Só você vê. Dá para filtrar por elas na Biblioteca.</p>
 
       <label className="label" htmlFor="resenha">Sua resenha</label>
       <textarea
@@ -96,7 +97,7 @@ export function NoteEditor({ itemId, entry, media }: { itemId: string; entry: En
         onBlur={saveReview}
       />
       <p className="muted" style={{ fontSize: 12, marginTop: 4 }} data-testid="visibilidade-resenha">
-        {mine?.is_public && mine.share_reviews ? "Pública: aparece no seu perfil, no feed de quem te segue e na página da obra, onde as pessoas podem comentar." : "Só você vê. Para abrir a conversa com outras pessoas, publique seu perfil e libere resenhas em Comunidade."}
+        {mine?.is_public && mine.share_reviews ? "Pública: aparece no seu perfil, no feed e na página da obra." : "Só você vê. Para mostrar, publique o perfil em Comunidade."}
       </p>
       <div className="row between mt8">
         <span className="muted" style={{ fontSize: 12 }} role="status">

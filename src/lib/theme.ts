@@ -32,7 +32,7 @@ export function applyTheme(t: Theme) {
   document.querySelectorAll('meta[name="theme-color"]').forEach((m) => {
     const forDark = m.getAttribute("media")?.includes("dark");
     const dark = t === "auto" ? !!forDark : t === "dark";
-    m.setAttribute("content", dark ? "#15140f" : "#f4efe6");
+    m.setAttribute("content", dark ? "#111110" : "#f4f4f1");
   });
   listeners.forEach((l) => l());
 }

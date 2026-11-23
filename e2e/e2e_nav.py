@@ -56,7 +56,7 @@ with sync_playwright() as p:
     # ordenar, filtrar, grade
     pg.get_by_role("button", name="Concluídos").click()
     rows = lambda: pg.locator("ul.cols2 li strong").all_inner_texts()
-    pg.get_by_role("button", name="A–Z").click()
+    pg.get_by_role("button", name="A-Z").click()
     r = rows(); check("ordem A–Z", r == sorted(r, key=lambda t: t.lower()) or len(r) > 1, str(r[:4]))
     pg.fill('input[aria-label="Filtrar pelo título"]', "HÁDES")
     check("filtro ignora acento e maiúscula", all("hades" in t.lower() for t in rows()) and len(rows()) >= 1, str(rows()))

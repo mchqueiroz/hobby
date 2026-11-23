@@ -52,7 +52,7 @@ export function Tonight({ pool }: { pool: Item[] }) {
   return (
     <section className="card mt16" aria-labelledby="tonight-t">
       <h2 id="tonight-t" style={{ fontSize: 18 }}>O que ver hoje?</h2>
-      <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>Escolha o clima e deixe o Hobby sortear entre as melhores opções para você.</p>
+      <p className="muted" style={{ fontSize: 13, marginTop: 4 }}>Escolha um clima e o Hobby sorteia entre as melhores opções.</p>
       <div className="mt12"><Chips label="Origem" options={SOURCE_OPTS} value={source} onChange={setSource} /></div>
       <div className="mt8"><Chips label="Mídia" options={MEDIA_OPTS} value={media} onChange={setMedia} /></div>
       <div className="mt8"><Chips label="Clima" options={MOOD_OPTS} value={mood} onChange={setMood} /></div>
@@ -72,7 +72,7 @@ export function Tonight({ pool }: { pool: Item[] }) {
             <Cover item={res.pick.item} w={72} h={100} fs={11} />
             <div style={{ flex: 1 }}>
               <Link href={`/item/${encodeURIComponent(res.pick.item.id)}`} onClick={() => cacheItem(res.pick!.item)}
-                style={{ fontFamily: "Lora, serif", fontSize: 20, fontWeight: 700, letterSpacing: -0.3 }}>
+                style={{ fontFamily: "var(--display)", fontSize: 20, fontWeight: 700, letterSpacing: -0.3 }}>
                 {res.pick.item.title}
               </Link>
               <div className="mt8"><MediaTag media={res.pick.item.media} /></div>

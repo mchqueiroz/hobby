@@ -91,7 +91,7 @@ export default function Descobrir() {
             <div className="row" style={{ alignItems: "flex-start", gap: 12 }}>
               <Cover item={r.item} w={66} h={92} fs={11} />
               <div style={{ flex: 1 }}>
-                <Link href={`/item/${encodeURIComponent(r.item.id)}`} onClick={() => cacheItem(r.item)} style={{ fontFamily: "Lora, serif", fontSize: 19, fontWeight: 700, letterSpacing: -0.3 }}>
+                <Link href={`/item/${encodeURIComponent(r.item.id)}`} onClick={() => cacheItem(r.item)} style={{ fontFamily: "var(--display)", fontSize: 19, fontWeight: 700, letterSpacing: -0.3 }}>
                   {r.item.title}
                 </Link>
                 <div className="row gap8 mt8" style={{ flexWrap: "wrap" }}>
@@ -100,7 +100,7 @@ export default function Descobrir() {
                   {r.bet && <span className="tag dark" data-testid="aposta">Aposta</span>}
                 </div>
                 <p style={{ fontSize: 13, marginTop: 8 }}>{r.reason}</p>
-                {r.bet && <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Foge um pouco do que você costuma ver, mas tem a ver com o que você gostou.</p>}
+                {r.bet && <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uma aposta: foge do seu costume, mas conversa com o que você gostou.</p>}
               </div>
             </div>
             <div className="row gap8 mt12">

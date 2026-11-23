@@ -88,8 +88,8 @@ export function vibePalette(vibes: string[], media: keyof typeof MEDIA_HUE): Hsl
   return { h: (Math.atan2(y, x) * 180 / Math.PI + 360) % 360, s: 0.5, l: 0.45 };
 }
 
-const PAPER_LIGHT: Rgb = [244, 239, 230];
-const PAPER_DARK: Rgb = [21, 20, 15];
+const PAPER_LIGHT: Rgb = [244, 244, 241];
+const PAPER_DARK: Rgb = [17, 17, 16];
 const WHITE: Rgb = [255, 255, 255];
 
 const css = (c: Rgb) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
@@ -116,7 +116,7 @@ export function obraTheme(color: Hsl): ObraTheme {
   // escuro: acento claro o bastante para texto escuro
   l = 0.62;
   let accD = hslToRgb({ h, s, l });
-  while (l < 0.9 && (contrast(accD, PAPER_DARK) < 4.5 || contrast(accD, [239, 233, 220]) < 3)) {
+  while (l < 0.9 && (contrast(accD, PAPER_DARK) < 4.5 || contrast(accD, [236, 236, 232]) < 3)) {
     l += 0.02;
     accD = hslToRgb({ h, s, l });
   }
@@ -130,10 +130,13 @@ export function obraTheme(color: Hsl): ObraTheme {
   };
 }
 
-/** Degradê do banner (só decoração: nenhum texto fica sobre ele). Cores em sintaxe com vírgula, que o canvas também lê. */
+/**
+ * Degradê do banner (só decoração: nenhum texto fica sobre ele). Cores em sintaxe com vírgula, que o canvas também lê.
+ * Dois tons da mesma cor, escuros e pouco saturados: o salto de matiz saturado (roxo para magenta) tinha cara de interface gerada.
+ */
 export function bannerColors(c: Hsl): [string, string] {
   const h = Math.round(c.h);
-  return [`hsl(${h}, 55%, 34%)`, `hsl(${(h + 42) % 360}, 62%, 52%)`];
+  return [`hsl(${h}, 30%, 20%)`, `hsl(${h}, 34%, 36%)`];
 }
 export const bannerGradient = (c: Hsl) => {
   const [a, b] = bannerColors(c);

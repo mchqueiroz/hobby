@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Todos os seus hobbies em um perfil. A próxima descoberta vem de qualquer mídia.",
     start_url: "/inicio",
     display: "standalone",
-    background_color: "#f4efe6",
-    theme_color: "#f4efe6",
+    background_color: "#f4f4f1",
+    theme_color: "#f4f4f1",
     lang: "pt-BR",
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },

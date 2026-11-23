@@ -10,7 +10,7 @@ npm run build >/tmp/e2e-build.log 2>&1 || { tail -20 /tmp/e2e-build.log; exit 1;
 # o app é reiniciado a cada script: o limite de requisições por IP (src/proxy.ts) fica na memória e todos os scripts vêm do mesmo IP
 start_app() {
   pkill -f "next-server"; pkill -f "next start" 2>/dev/null; sleep 1
-  ANILIST_URL=$M TMDB_BASE=$M IGDB_BASE=$M TWITCH_TOKEN_URL=$M/oauth2/token OPENLIB_BASE=$M MUSICBRAINZ_BASE=$M \
+  ANILIST_URL=$M TMDB_BASE=$M IGDB_BASE=$M TWITCH_TOKEN_URL=$M/oauth2/token OPENLIB_BASE=$M MUSICBRAINZ_BASE=$M DEEZER_BASE=$M STEAM_BASE=$M STEAMSPY_BASE=$M \
   TMDB_READ_TOKEN=tmdbtoken IGDB_CLIENT_ID=cid IGDB_CLIENT_SECRET=csecret \
     nohup npx next start -p 3100 >/tmp/e2e-app.log 2>&1 &
   for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:3100/descobrir && break; sleep 0.5; done

@@ -15,7 +15,7 @@ export interface ReviewCardData {
 const MONTH_NAMES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const W = 1080;
 const H = 1350;
-const C = { paper: "#f4efe6", ink: "#17150f", mute: "#5f5a50", line: "#d8d0c0", accent: "#c93d22" };
+const C = { paper: "#f4f4f1", ink: "#141413", mute: "#5f5f5a", line: "#e0e0db", accent: "#c93d22" };
 const MEDIA_COLOR: Record<Media, string> = { anime: "#c93d22", manga: "#7a3b9c", jogo: "#2f7d5b", filme: "#2b5c9e", livro: "#9a5a12", musica: "#b02a67" };
 
 /** Escolhe o que cabe no cartão. Só usa números da própria retrospectiva. */
@@ -46,15 +46,15 @@ const stars = (r: number) => "★".repeat(Math.floor(r)) + (r - Math.floor(r) >=
 /** Desenha a retrospectiva em PNG, no aparelho. Nada é enviado a servidor. */
 export async function buildReviewCard(d: ReviewCardData): Promise<Blob> {
   try {
-    await Promise.all([document.fonts.load("700 80px Lora"), document.fonts.load("italic 700 56px Lora"), document.fonts.load("500 30px Inter Variable")]);
+    await Promise.all([document.fonts.load('800 80px "Schibsted Grotesk Variable"'), document.fonts.load('italic 800 56px "Schibsted Grotesk Variable"'), document.fonts.load('500 30px "Schibsted Grotesk Variable"')]);
   } catch { /* usa a fonte reserva */ }
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("canvas");
-  const serif = "Lora, Georgia, serif";
-  const sans = '"Inter Variable", Inter, system-ui, sans-serif';
+  const serif = '"Schibsted Grotesk Variable", system-ui, sans-serif'; // títulos (o nome ficou de quando era serifada)
+  const sans = '"Schibsted Grotesk Variable", system-ui, sans-serif';
 
   ctx.fillStyle = C.paper;
   ctx.fillRect(0, 0, W, H);
@@ -62,23 +62,23 @@ export async function buildReviewCard(d: ReviewCardData): Promise<Blob> {
   MEDIAS.forEach((m, i) => { ctx.fillStyle = MEDIA_COLOR[m]; ctx.fillRect(i * seg, 0, seg, 18); });
 
   ctx.fillStyle = C.ink;
-  ctx.font = `italic 700 56px ${serif}`;
+  ctx.font = `italic 800 56px ${serif}`;
   ctx.fillText("hobby", 80, 120);
   ctx.fillStyle = C.mute;
   ctx.font = `600 28px ${sans}`;
   ctx.fillText(`MEU ${d.year}`, 80, 190);
 
   ctx.fillStyle = C.ink;
-  ctx.font = `700 260px ${serif}`;
+  ctx.font = `800 260px ${serif}`;
   ctx.fillText(String(d.done), 70, 440);
-  ctx.font = `700 52px ${serif}`;
+  ctx.font = `800 52px ${serif}`;
   ctx.fillText(d.done === 1 ? "obra concluída" : "obras concluídas", 80, 510);
 
   let y = 600;
   d.medias.forEach((m, i) => {
     const x = 80 + i * 310;
     ctx.fillStyle = MEDIA_COLOR[m.media];
-    ctx.font = `700 90px ${serif}`;
+    ctx.font = `800 90px ${serif}`;
     ctx.fillText(String(m.count), x, y + 40);
     ctx.fillStyle = C.ink;
     ctx.font = `500 30px ${sans}`;
@@ -108,7 +108,7 @@ export async function buildReviewCard(d: ReviewCardData): Promise<Blob> {
       ctx.fillStyle = MEDIA_COLOR[b.media];
       ctx.fillRect(80, ry - 36, 10, 50);
       ctx.fillStyle = C.ink;
-      ctx.font = `700 38px ${serif}`;
+      ctx.font = `800 38px ${serif}`;
       ctx.fillText(fit(ctx, b.title, 640), 110, ry);
       ctx.fillStyle = C.mute;
       ctx.font = `500 26px ${sans}`;
