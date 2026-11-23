@@ -3,7 +3,7 @@
  * - páginas e navegação do mesmo site: rede primeiro, cache se estiver sem internet.
  * - /api/* e qualquer outro site (Supabase, TMDB...): nunca passa por aqui, sempre vai direto à rede.
  * - sem internet e sem a página no cache: mostra /offline.html. */
-const VERSION = "hobby-v1";
+const VERSION = "hobby-v2"; // trocar a versão limpa o cache antigo (fez falta na reorganização do menu)
 const PAGES = `${VERSION}-pages`;
 const STATIC = `${VERSION}-static`;
 const OFFLINE = "/offline.html";
