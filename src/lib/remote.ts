@@ -136,7 +136,7 @@ export const MEDIA_ORDER: Media[] = ["anime", "manga", "livro", "jogo", "filme"]
 export type SourceState = "ok" | "error" | "off";
 export interface RemoteResult {
   items: Item[];
-  sources: { tmdb: SourceState; igdb: SourceState; anilist: SourceState; openlibrary: SourceState; musicbrainz: SourceState };
+  sources: { tmdb: SourceState; igdb: SourceState; steam: SourceState; anilist: SourceState; openlibrary: SourceState; musicbrainz: SourceState };
 }
 
 /* ---------- Open Library (livros) ---------- */

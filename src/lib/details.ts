@@ -35,7 +35,7 @@ export interface Availability {
   /** página de quem fornece os dados (JustWatch via TMDB) */
   pageUrl?: string;
   /** de onde vêm os dados, para dar o crédito */
-  source: "JustWatch" | "AniList" | "IGDB";
+  source: "JustWatch" | "AniList" | "IGDB" | "Steam";
 }
 
 /** Só aceita links https (nada de javascript:, data: ou http solto). */
@@ -269,4 +269,32 @@ export function mapMusicBrainzDetails(g: MusicBrainzDetailsRaw): Details {
   facts.push(...uniq((g.tags ?? []).slice().sort((a, b) => (b.count ?? 0) - (a.count ?? 0)).map((t) => t.name), 3));
   const makers = uniq((g["artist-credit"] ?? []).map((a) => a.name || a.artist?.name), 3);
   return { synopsis: clip(g.disambiguation?.trim() || undefined), makers, facts };
+}
+
+/* ---------- Steam (jogos sem IGDB) ---------- */
+
+export interface SteamDetailsRaw {
+  short_description?: string;
+  is_free?: boolean;
+  genres?: { description: string }[];
+  release_date?: { date?: string; coming_soon?: boolean };
+  metacritic?: { score?: number };
+  developers?: string[];
+  platforms?: { windows?: boolean; mac?: boolean; linux?: boolean };
+}
+
+export function mapSteamDetails(id: number, d: SteamDetailsRaw): Details {
+  const facts: string[] = [];
+  if (d.release_date?.date) facts.push(d.release_date.coming_soon ? `Lança: ${d.release_date.date}` : `Lançado em ${d.release_date.date}`);
+  if (d.genres?.length) facts.push(d.genres.map((g) => g.description).join(", "));
+  const pcs = [d.platforms?.windows && "Windows", d.platforms?.mac && "Mac", d.platforms?.linux && "Linux"].filter(Boolean);
+  if (pcs.length) facts.push(pcs.join(", "));
+  const store = { name: "Steam", url: `https://store.steampowered.com/app/${id}` };
+  return {
+    synopsis: d.short_description ? stripHtml(d.short_description) : undefined,
+    makers: d.developers?.slice(0, 3),
+    score: d.metacritic?.score ? { value: d.metacritic.score / 10, source: "Metacritic" } : undefined,
+    facts,
+    where: { flatrate: [], rent: [], buy: d.is_free ? [] : ["Steam"], free: d.is_free ? ["Steam"] : [], links: [store], source: "Steam" },
+  };
 }

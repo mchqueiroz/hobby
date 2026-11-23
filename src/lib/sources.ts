@@ -1,4 +1,4 @@
-import { ANILIST_GENRES, IGDB_TERMS, MB_DISCOVER, OL_DISCOVER } from "./vibes";
+import { ANILIST_GENRES, IGDB_TERMS, MB_DISCOVER, OL_DISCOVER, type Vibe } from "./vibes";
 import {
   mapAniListMedia,
   isMbid,
@@ -26,6 +26,7 @@ import {
   mapIgdbDetails,
   mapMusicBrainzDetails,
   mapOpenLibraryDetails,
+  mapSteamDetails,
   mapTmdbDetails,
   type AniListDetailsRaw,
   type Details,
@@ -293,6 +294,97 @@ export async function musicBrainzDiscover(vibes: string[], page = 1): Promise<It
     .filter((i): i is Item => !!i && i.vibes.length >= 2);
 }
 
+/* ----------------------- Steam (jogos, sem chave) ----------------------- */
+// Fonte de jogos enquanto o IGDB não tem chave. Só cobre o que está na Steam (PC); consoles exclusivos ficam de fora.
+
+const STEAM = () => env("STEAM_BASE") ?? "https://store.steampowered.com";
+export const steamCover = (id: number | string) => `https://cdn.akamai.steamstatic.com/steam/apps/${id}/library_600x900.jpg`;
+
+export interface SteamApp {
+  type?: string;
+  name?: string;
+  steam_appid?: number;
+  short_description?: string;
+  is_free?: boolean;
+  genres?: { description: string }[];
+  release_date?: { date?: string; coming_soon?: boolean };
+  metacritic?: { score?: number };
+  developers?: string[];
+  platforms?: { windows?: boolean; mac?: boolean; linux?: boolean };
+}
+
+/** Gêneros da Steam (em português) para o nosso vocabulário de vibes. */
+const STEAM_GENRES: Record<string, Vibe[]> = {
+  "Ação": ["ação intensa"],
+  "Aventura": ["aventura"],
+  RPG: ["jornada épica"],
+  "Estratégia": ["estratégia"],
+  Esportes: ["competição"],
+  Corrida: ["competição"],
+  Casual: ["humor leve"],
+  "Simulação": ["slice of life"],
+  "Multijogador massivo": ["competição"],
+};
+
+/** Tags da Steam usadas na Descobrir, por vibe (ids conferidos na loja). */
+const STEAM_TAGS: Partial<Record<Vibe, number>> = {
+  sombrio: 4342, psicológico: 1721, investigação: 5613, mistério: 5716, "jornada épica": 122, aventura: 21, fantasia: 1684,
+  "ficção científica": 3942, futurista: 4115, noir: 6052, crime: 6378, guerra: 1678, sobrevivência: 1662, terror: 1667,
+  "ação intensa": 19, competição: 3878, "humor leve": 4136, "drama humano": 5608, filosófico: 15277, "narrativa densa": 1742,
+  exploração: 3834, estratégia: 9, família: 5350, introspectivo: 15277, melancólico: 5608, "slice of life": 1654,
+};
+
+export function mapSteam(id: number, d: SteamApp, extra: Vibe[] = []): Item | null {
+  if (!d.name || (d.type && d.type !== "game")) return null;
+  const year = Number(/(\d{4})/.exec(d.release_date?.date ?? "")?.[1]) || undefined;
+  const vibes = Array.from(new Set([...extra, ...(d.genres ?? []).flatMap((g) => STEAM_GENRES[g.description] ?? [])])).slice(0, 6);
+  const score = d.metacritic?.score;
+  return { id: `steam:${id}`, title: d.name, media: "jogo", year, vibes, source: "steam", cover: steamCover(id), quality: score ? score / 10 : undefined };
+}
+
+async function steamGet<T>(path: string, params: Record<string, string>): Promise<T> {
+  const url = new URL(STEAM() + path);
+  for (const [k, v] of Object.entries({ l: "portuguese", cc: "BR", ...params })) url.searchParams.set(k, v);
+  return json<T>(await fetch(url, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(TIMEOUT), cache: "no-store" }));
+}
+
+export async function steamApp(id: number): Promise<SteamApp | null> {
+  const body = await steamGet<Record<string, { success?: boolean; data?: SteamApp }>>("/api/appdetails", { appids: String(id) });
+  return body[id]?.success ? (body[id].data ?? null) : null;
+}
+
+/** Detalhes de cada id (a Steam só dá dados completos um app por vez); falha individual vira item mínimo. */
+async function steamItems(hits: { id: number; name: string }[], extra: Vibe[] = []): Promise<Item[]> {
+  const apps = await Promise.all(hits.map((h) => steamApp(h.id).catch(() => null)));
+  return hits
+    .map((h, i) => (apps[i] ? mapSteam(h.id, apps[i]!, extra) : mapSteam(h.id, { name: h.name, type: "game" }, extra)))
+    .filter((i): i is Item => !!i);
+}
+
+export async function steamSearch(q: string): Promise<Item[]> {
+  const body = await steamGet<{ items?: { id: number; name: string; type?: string }[] }>("/api/storesearch/", { term: q });
+  return steamItems((body.items ?? []).filter((i) => i.type === "app").slice(0, 6));
+}
+
+export async function steamDiscover(vibes: string[], page = 1): Promise<Item[]> {
+  const v = vibes.find((x) => STEAM_TAGS[x as Vibe]) as Vibe | undefined;
+  if (!v) return [];
+  // "mais vendidos" dentro da tag: ordenar por avaliação traz jogos obscuros (é por % de votos positivos)
+  const body = await steamGet<{ items?: { name: string; logo: string }[] }>("/search/results/", {
+    json: "1", tags: String(STEAM_TAGS[v]), category1: "998", filter: "topsellers", count: "12", start: String((page - 1) * 12),
+  });
+  const hits = (body.items ?? [])
+    .map((i) => ({ name: i.name, id: Number(/\/apps\/(\d+)\//.exec(i.logo)?.[1]) }))
+    .filter((h) => h.id > 0);
+  return steamItems(hits, [v]);
+}
+
+/** O jogo da Steam que mais parece com um título (capa e detalhes do catálogo base). */
+async function steamFind(title: string): Promise<number | null> {
+  const body = await steamGet<{ items?: { id: number; type?: string }[] }>("/api/storesearch/", { term: title });
+  return body.items?.find((i) => i.type === "app")?.id ?? null;
+}
+
 /* ------------------- junta tolerando falha por fonte ------------------- */
 
 async function settle(
@@ -316,19 +408,14 @@ export const cacheFor = (r: RemoteResult, sMaxAge: number, swr: number) =>
     ? "public, max-age=0, s-maxage=30"
     : `public, max-age=0, s-maxage=${sMaxAge}, stale-while-revalidate=${swr}`;
 
-function merge(
-  t: { items: Item[]; state: SourceState },
-  g: { items: Item[]; state: SourceState },
-  a: { items: Item[]; state: SourceState },
-  m: { items: Item[]; state: SourceState },
-  o: { items: Item[]; state: SourceState },
-  u: { items: Item[]; state: SourceState },
-): RemoteResult {
+type Settled = { items: Item[]; state: SourceState };
+function merge(t: Settled, g: Settled, a: Settled, m: Settled, o: Settled, u: Settled, st: Settled): RemoteResult {
   return {
-    items: [...a.items, ...m.items, ...o.items, ...u.items, ...g.items, ...t.items],
+    items: [...a.items, ...m.items, ...o.items, ...u.items, ...g.items, ...st.items, ...t.items],
     sources: {
       tmdb: t.state,
       igdb: g.state,
+      steam: st.state,
       anilist: a.state === "ok" || m.state === "ok" ? "ok" : a.state,
       openlibrary: o.state,
       musicbrainz: u.state,
@@ -338,28 +425,30 @@ function merge(
 
 export async function searchAll(q: string): Promise<RemoteResult> {
   const c = configured();
-  const [t, g, a, m, o, u] = await Promise.all([
+  const [t, g, a, m, o, u, st] = await Promise.all([
     settle("tmdb", c.tmdb, () => tmdbSearch(q)),
     settle("igdb", c.igdb, () => igdbSearch(q)),
     settle("anilist", true, () => anilistSearch(q, "anime")),
     settle("anilist-manga", true, () => anilistSearch(q, "manga")),
     settle("openlibrary", true, () => openLibrarySearch(q)),
     settle("musicbrainz", true, () => musicBrainzSearch(q)),
+    settle("steam", !c.igdb, () => steamSearch(q)),
   ]);
-  return merge(t, g, a, m, o, u);
+  return merge(t, g, a, m, o, u, st);
 }
 
 export async function discoverAll(vibes: string[], page = 1): Promise<RemoteResult> {
   const c = configured();
-  const [t, g, a, m, o, u] = await Promise.all([
+  const [t, g, a, m, o, u, st] = await Promise.all([
     settle("tmdb", c.tmdb, () => tmdbDiscover(vibes, page)),
     settle("igdb", c.igdb, () => igdbDiscover(vibes, page)),
     settle("anilist", true, () => anilistDiscover(vibes, "anime", page)),
     settle("anilist-manga", true, () => anilistDiscover(vibes, "manga", page)),
     settle("openlibrary", true, () => openLibraryDiscover(vibes, page)),
     settle("musicbrainz", true, () => musicBrainzDiscover(vibes, page)),
+    settle("steam", !c.igdb, () => steamDiscover(vibes, page)),
   ]);
-  return merge(t, g, a, m, o, u);
+  return merge(t, g, a, m, o, u, st);
 }
 
 /* --------------- capa de um título conhecido (catálogo base) --------------- */
@@ -380,7 +469,10 @@ export async function findCover(title: string, media: Media, year?: number, arti
     return best ? (mapTmdb(best)?.cover ?? null) : null;
   }
   if (media === "jogo") {
-    if (!c.igdb) return null;
+    if (!c.igdb) {
+      const id = await steamFind(title);
+      return id ? steamCover(id) : null;
+    }
     const safe = title.replace(/["\\]/g, " ");
     const games = await igdbQuery(`search "${safe}"; ${IGDB_FIELDS} where cover != null & version_parent = null; limit 3;`);
     return games.map(mapIgdb).find((i) => i?.cover)?.cover ?? null;
@@ -450,8 +542,12 @@ export async function findDetails(q: DetailsQuery): Promise<Details | null> {
     return mapTmdbDetails(raw, type === "tv");
   }
 
+  if (q.media === "jogo" && !c.igdb) {
+    const id = kind === "steam" && /^\d+$/.test(a ?? "") ? Number(a) : await steamFind(q.title);
+    const app = id ? await steamApp(id) : null;
+    return app && id ? mapSteamDetails(id, app) : null;
+  }
   if (q.media === "jogo") {
-    if (!c.igdb) return null;
     const fields = "fields summary, first_release_date, total_rating, total_rating_count, genres.name, platforms.name, involved_companies.developer, involved_companies.company.name, videos.video_id, similar_games.name, websites.category, websites.url;";
     const where = kind === "igdb" && /^\d+$/.test(a ?? "")
       ? `where id = ${a};`

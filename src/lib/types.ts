@@ -76,7 +76,7 @@ export interface Item {
   /** de 3 a 6 termos do vocabulário comum (ver vibes.ts) */
   vibes: string[];
   brazil?: boolean;
-  source: "seed" | "anilist" | "tmdb" | "igdb" | "openlibrary" | "musicbrainz";
+  source: "seed" | "anilist" | "tmdb" | "igdb" | "steam" | "openlibrary" | "musicbrainz";
   /** URL da capa/pôster quando a API fornece */
   cover?: string;
   /** autoria: escritor (livro) ou artista (álbum). Só informativo. */

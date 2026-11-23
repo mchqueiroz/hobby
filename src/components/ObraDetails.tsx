@@ -85,6 +85,7 @@ const SOURCE_NOTE: Record<Availability["source"], string> = {
   JustWatch: "Disponibilidade no Brasil: dados do JustWatch, via TMDB.",
   AniList: "Links de streaming informados pelo AniList.",
   IGDB: "Lojas informadas pelo IGDB.",
+  Steam: "Preço e loja: Steam (só a versão de PC).",
 };
 
 /** Onde encontrar a obra. Quando a fonte não sabe, mostramos só links de busca, e dizemos isso. */

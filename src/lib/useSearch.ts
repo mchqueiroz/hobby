@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { mergeResults, searchItems } from "./search";
+import { mergeResults, rankByRelevance, searchItems } from "./search";
 import { useLibrary } from "./store";
 import type { Item } from "./types";
 
@@ -30,6 +30,6 @@ export function useSearch(q: string, limit = 12) {
   }, [term]);
 
   const searching = active && remote.term !== term;
-  const results = mergeResults(searchItems(lib, q, limit), active && remote.term === term ? remote.items : [], limit);
+  const results = mergeResults(searchItems(lib, q, limit), active && remote.term === term ? rankByRelevance(term, remote.items) : [], limit);
   return { results, searching, active, term };
 }

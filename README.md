@@ -12,7 +12,7 @@ cp .env.example .env.local   # opcional, veja "Variáveis" abaixo
 npm run dev                  # http://localhost:3000
 ```
 
-Sem nenhuma chave o app já funciona: AniList (anime, mangá), Open Library (livros) e MusicBrainz (música) não pedem chave, e os dados ficam no aparelho. Para ver rápido sem importar nada, toque em **Ver com dados de exemplo** na tela inicial.
+Sem nenhuma chave o app já funciona: AniList (anime, mangá), Open Library (livros), MusicBrainz (música) e Steam (jogos de PC) não pedem chave, e os dados ficam no aparelho. Para ver rápido sem importar nada, toque em **Ver com dados de exemplo** na tela inicial.
 
 ### No celular
 
@@ -24,7 +24,7 @@ Sem nenhuma chave o app já funciona: AniList (anime, mangá), Open Library (liv
 | Variável | Para quê | Sem ela |
 |---|---|---|
 | `TMDB_READ_TOKEN` | filmes e séries (themoviedb.org/settings/api) | sem busca de filmes e séries; a importação do Letterboxd não funciona |
-| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | jogos (app em dev.twitch.tv/console) | sem busca de jogos |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | jogos de todas as plataformas (app em dev.twitch.tv/console) | jogos vêm da loja da Steam (sem chave, só PC) |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | conta, sincronização e parte social | o app funciona só no aparelho |
 | `NEXT_PUBLIC_SITE_URL` | links de compartilhamento e sitemap | usa o endereço local |
 | `CRON_SECRET` | só o cron da Vercel chama `/api/keepalive` | a rota fica aberta (inofensiva) |
@@ -63,7 +63,7 @@ O `run.sh` sobe `e2e/mock.mjs` na porta 4010, que imita AniList, TMDB, IGDB, Ope
 ## Como funciona
 
 - **Local primeiro:** a biblioteca fica no aparelho (`src/lib/store.ts`). Com uma conta, `src/lib/cloud.ts` junta aparelho e nuvem sem apagar nada local (regras em `src/lib/sync.ts`).
-- **Catálogos:** as rotas `src/app/api/*` buscam no AniList, TMDB, IGDB, Open Library e MusicBrainz. Cada fonte falha sozinha: se uma cair, as outras e o catálogo local continuam. `src/proxy.ts` limita requisições por IP.
+- **Catálogos:** as rotas `src/app/api/*` buscam no AniList, TMDB, IGDB (ou Steam, sem chave), Open Library e MusicBrainz. A busca ordena por relevância alternando as mídias e tem filtro por mídia. Cada fonte falha sozinha: se uma cair, as outras e o catálogo local continuam. `src/proxy.ts` limita requisições por IP.
 - **Importação:** AniList (nome de usuário), MyAnimeList (`animelist.xml`/`.gz`), Letterboxd (CSVs do export) e Goodreads ou StoryGraph (CSV, livros achados no Open Library). Os arquivos são lidos no aparelho. No primeiro uso dá para escrever os favoritos ("Dark, Persona 5, Kafka à beira-mar") e cada um é buscado nas fontes reais.
 - **Recomendação** (`src/lib/recommend.ts`, `src/lib/rec/`):
   1. Cada obra tem de 3 a 6 "vibes" tiradas de um vocabulário comum (`src/lib/vibes.ts`).

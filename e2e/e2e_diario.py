@@ -84,7 +84,7 @@ with sync_playwright() as p:
     # estatísticas
     pg.goto(BASE + "/estatisticas"); pg.wait_for_selector("text=Por mídia")
     txt = pg.inner_text("main")
-    check("estatísticas mostram total de 14 itens", "14" in txt and "itens" in txt, txt[:120])
+    check("estatísticas mostram total de 22 itens", "22" in txt and "itens" in txt, txt[:120])
     check("estatísticas mostram resenhas", "1" in txt and "resenha" in txt)
     check("gráfico por mês tem descrição acessível", pg.locator('[role=img][aria-label^="Concluídos por mês"]').count() == 1)
     check("sem rolagem horizontal no celular", pg.evaluate("document.documentElement.scrollWidth <= window.innerWidth"))

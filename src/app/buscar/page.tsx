@@ -3,10 +3,15 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { cacheItem, saveEntry, track, undoLast, useHydrated, useLibrary } from "@/lib/store";
-import { statusLabel, wantLabel } from "@/lib/types";
+import { MEDIAS, MEDIA_PLURAL, statusLabel, wantLabel, type Media } from "@/lib/types";
 import { useSearch } from "@/lib/useSearch";
-import { Cover, Header, MediaTag } from "@/components/ui";
+import { Chips, Cover, Header, MediaTag } from "@/components/ui";
 import { useShell } from "@/components/Shell";
+
+const FILTERS: { value: Media | "tudo"; label: string }[] = [
+  { value: "tudo", label: "Tudo" },
+  ...MEDIAS.map((m) => ({ value: m, label: MEDIA_PLURAL[m][0].toUpperCase() + MEDIA_PLURAL[m].slice(1) })),
+];
 
 export default function Buscar() {
   const lib = useLibrary();
@@ -14,7 +19,9 @@ export default function Buscar() {
   const { openRegister, toast } = useShell();
   const [q, setQ] = useState("");
   const input = useRef<HTMLInputElement>(null);
-  const { results, searching, active } = useSearch(q);
+  const [media, setMedia] = useState<Media | "tudo">("tudo");
+  const { results: all, searching, active } = useSearch(q, 60);
+  const results = (media === "tudo" ? all : all.filter((r) => r.media === media)).slice(0, 24);
 
   useEffect(() => { input.current?.focus(); }, [ready]);
   useEffect(() => {
@@ -26,13 +33,14 @@ export default function Buscar() {
   if (!ready) return null;
   return (
     <>
-      <Header title="Buscar" sub="Anime, jogo, filme ou série. Aperte / em qualquer tela para chegar aqui." />
+      <Header title="Buscar" sub="Anime, mangá, jogo, filme, série, livro ou álbum. Aperte / em qualquer tela para chegar aqui." />
       <label className="label" htmlFor="busca-global">Nome da obra</label>
       <input id="busca-global" ref={input} className="field" value={q} onChange={(e) => setQ(e.target.value)}
         placeholder="Ex.: Death Note, Hades, Duna" autoComplete="off" type="search" />
+      {active && <div className="mt12"><Chips label="Filtrar por mídia" options={FILTERS} value={media} onChange={setMedia} /></div>}
       {searching && <p className="muted mt12" style={{ fontSize: 13 }} role="status">Buscando…</p>}
       {q.trim() && !searching && results.length === 0 && (
-        <p className="muted mt12" style={{ fontSize: 14 }}>Não encontramos esse título.</p>
+        <p className="muted mt12" style={{ fontSize: 14 }}>{media === "tudo" ? "Não encontramos esse título." : `Nada em ${MEDIA_PLURAL[media]} com esse nome. Tente "Tudo".`}</p>
       )}
       <ul className="mt12" style={{ listStyle: "none" }}>
         {results.map((r) => {

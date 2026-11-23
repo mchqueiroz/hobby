@@ -424,6 +424,14 @@ export function loadDemo() {
     ["seed:filme:blade-runner", "concluido", 4],
     ["seed:filme:parasita", "concluido", 4],
     ["seed:filme:bacurau", "quero"],
+    ["seed:manga:berserk", "concluido", 5],
+    ["seed:manga:vinland-saga", "andamento"],
+    ["seed:livro:o-hobbit", "concluido", 5],
+    ["seed:livro:dom-casmurro", "concluido", 4.5],
+    ["seed:livro:crime-e-castigo", "concluido", 4],
+    ["seed:livro:neuromancer", "quero"],
+    ["seed:musica:kind-of-blue", "concluido", 5],
+    ["seed:musica:clube-da-esquina", "concluido", 4.5],
   ];
   const now = Date.now();
   const entries: Record<string, Entry> = {};

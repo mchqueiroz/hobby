@@ -13,7 +13,7 @@ def events(): return json.load(urllib.request.urlopen(MOCK + "/__events"))
 r = api("/api/search?q=dune")
 ids = [i["id"] for i in r["items"]]
 check("search junta as 6 mídias", ids == ["anilist:777001", "anilist:manga:888001", "openlibrary:OL777W", "musicbrainz:11111111-1111-4111-8111-111111111111", "igdb:119133", "tmdb:movie:438631", "tmdb:tv:85552"], str(ids))
-check("search: sources ok", r["sources"] == {"tmdb": "ok", "igdb": "ok", "anilist": "ok", "openlibrary": "ok", "musicbrainz": "ok"}, str(r["sources"]))
+check("search: sources ok (Steam desligada quando há IGDB)", r["sources"] == {"tmdb": "ok", "igdb": "ok", "steam": "off", "anilist": "ok", "openlibrary": "ok", "musicbrainz": "ok"}, str(r["sources"]))
 mg = next(i for i in r["items"] if i["id"] == "anilist:manga:888001")
 check("mangá mapeado (mídia, id com tipo)", mg["media"] == "manga" and "ficção científica" in mg["vibes"], str(mg))
 al = next(i for i in r["items"] if i["id"].startswith("musicbrainz:"))

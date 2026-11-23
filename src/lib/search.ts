@@ -65,3 +65,25 @@ export function pickBest(term: string, items: Item[]): Item | null {
     null
   );
 }
+
+/**
+ * Ordena resultados de várias fontes pelo que a pessoa digitou: título igual, depois começando igual, depois contendo.
+ * Dentro de cada faixa as mídias se alternam, para "Harry Potter" mostrar livro e filme em vez de uma fonte inteira antes da outra.
+ */
+export function rankByRelevance(term: string, items: Item[]): Item[] {
+  const q = norm(term);
+  const tier = (i: Item) => {
+    const t = norm(i.title);
+    return t === q ? 0 : t.startsWith(q) ? 1 : t.includes(q) ? 2 : 3;
+  };
+  const seenPerMedia = new Map<string, number>();
+  return items
+    .map((it, idx) => {
+      const k = `${tier(it)}:${it.media}`;
+      const n = seenPerMedia.get(k) ?? 0;
+      seenPerMedia.set(k, n + 1);
+      return { it, idx, t: tier(it), n };
+    })
+    .sort((a, b) => a.t - b.t || a.n - b.n || a.idx - b.idx)
+    .map((x) => x.it);
+}

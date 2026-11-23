@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "../types";
-import { pickBest, searchItems, splitFavorites } from "../search";
+import { pickBest, rankByRelevance, searchItems, splitFavorites } from "../search";
 import { EMPTY_LIBRARY, type Library } from "../types";
 
 describe("busca local", () => {
@@ -44,5 +44,16 @@ describe("pickBest", () => {
     expect(pickBest("persona", [it_("A Persona", []), it_("Persona 5"), it_("Persona 4")])?.title).toBe("Persona 5");
     expect(pickBest("xyz", [it_("Sem vibes", []), it_("Com vibes")])?.title).toBe("Com vibes");
     expect(pickBest("xyz", [])).toBeNull();
+  });
+});
+
+describe("rankByRelevance", () => {
+  const m = (title: string, media: string) => ({ id: `${media}:${title}`, title, media, vibes: [] }) as unknown as Item;
+  it("título igual primeiro e mídias alternadas dentro de cada faixa", () => {
+    const r = rankByRelevance("harry potter", [
+      m("Harry Potter e a Pedra Filosofal", "livro"), m("Harry Potter e a Câmara Secreta", "livro"), m("Harry Potter e o Prisioneiro", "livro"),
+      m("Harry Potter e a Pedra Filosofal", "filme"), m("Harry Potter e a Câmara Secreta", "filme"), m("Harry Potter", "jogo"),
+    ]);
+    expect(r.map((i) => i.media)).toEqual(["jogo", "livro", "filme", "livro", "filme", "livro"]);
   });
 });
