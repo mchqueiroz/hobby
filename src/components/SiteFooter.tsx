@@ -9,8 +9,8 @@ export function SiteFooter() {
         <Link href="/importar" style={{ textDecoration: "underline" }}>Importar histórico</Link>
       </p>
       <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-        Dados de filmes e séries: este produto usa a API do TMDB, mas não é endorsado nem certificado pelo TMDB. Jogos: IGDB. Anime e mangá: AniList.
-        Livros: Open Library. Música: MusicBrainz.
+        Dados de filmes e séries: este produto usa a API do TMDB, mas não é endorsado nem certificado pelo TMDB. Jogos: Steam e IGDB. Anime e mangá: AniList.
+        Livros: Open Library.
       </p>
     </footer>
   );

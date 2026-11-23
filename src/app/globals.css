@@ -196,6 +196,20 @@ textarea.field { resize: vertical; min-height: 110px; line-height: 1.45; font-fa
 
 .mb12 { margin-bottom: 12px; }
 
+/* apresentação (/): coluna estreita; no computador os botões ficam lado a lado */
+.landing { max-width: 600px; margin: 0 auto; padding-top: 8px; }
+.landing-title { margin-top: 36px; font-size: 38px; line-height: 1.05; }
+.landing-sub { font-size: 17px; margin-top: 14px; max-width: 34ch; }
+.landing-ctas { display: grid; gap: 10px; margin-top: 28px; }
+.landing-body { margin-top: 36px; font-size: 15px; line-height: 1.6; color: var(--ink); }
+.landing-body p + p { margin-top: 12px; }
+@media (min-width: 640px) {
+  .landing { padding-top: 40px; }
+  .landing-title { font-size: 52px; }
+  .landing-ctas { grid-template-columns: auto auto; justify-content: start; }
+  .landing-ctas .btn { width: auto; padding: 0 26px; }
+}
+
 /* boas-vindas: centralizado na tela, só dois caminhos */
 .welcome { min-height: calc(100dvh - 190px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 10px; }
 .welcome h1 { margin-top: 18px; }
@@ -233,6 +247,7 @@ textarea.field { resize: vertical; min-height: 110px; line-height: 1.45; font-fa
   .sheet { left: 50%; right: auto; top: 50%; bottom: auto; transform: translate(-50%, -50%); width: 520px; border-radius: 24px; padding-bottom: 24px; }
   .cols2 { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
   .grid-view { grid-template-columns: repeat(5, 1fr); }
+
 }
 
 /* perfil */
@@ -327,3 +342,6 @@ textarea.field { resize: vertical; min-height: 110px; line-height: 1.45; font-fa
 .morefilters > summary::after { content: "▾"; font-size: 11px; }
 .morefilters[open] > summary::after { content: "▴"; }
 .morefilters > summary .n { background: var(--ink); color: var(--paper); border-radius: 999px; font-size: 11px; min-width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; padding: 0 5px; }
+
+/* computador: pôsteres da vitrine com tamanho fixo (a regra base acima é para celular) */
+@media (min-width: 900px) { .vitrine { grid-template-columns: repeat(4, 140px); gap: 16px; } }
